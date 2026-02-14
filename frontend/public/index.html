@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BotBot - Crypto Trading Agent Arena</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: #1a2332;
+            --bg-card-hover: #1f2a3c;
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-yellow: #f59e0b;
+            --accent-cyan: #06b6d4;
+            --border-color: #374151;
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-idle { background: var(--border-color); color: var(--text-secondary); }
+        .status-running { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .status-complete { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+
+        .btn {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .btn-primary:hover { background: #2563eb; }
+
+        .btn-danger {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .btn-danger:hover { background: #dc2626; }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto auto;
+            gap: 16px;
+            padding: 16px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title .icon { font-size: 18px; }
+
+        /* Progress Bar */
+        .progress-section { grid-column: 1 / -1; }
+
+        .progress-bar-container {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            height: 8px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--gradient-1);
+            border-radius: 8px;
+            transition: width 0.3s;
+        }
+
+        .progress-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Price Tickers */
+        .price-section { grid-column: 1 / -1; }
+
+        .price-tickers {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 4px 0;
+        }
+
+        .price-ticker {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 16px;
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .price-ticker .symbol {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        .price-ticker .price {
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+
+        /* Leaderboard */
+        .leaderboard-section { grid-column: 1 / -1; }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .leaderboard-table th {
+            text-align: left;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .leaderboard-table td {
+            padding: 8px 12px;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+        }
+
+        .leaderboard-table tr:hover { background: var(--bg-card-hover); }
+
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .rank-1 { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #000; }
+        .rank-2 { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); color: #000; }
+        .rank-3 { background: linear-gradient(135deg, #cd7f32, #b8690e); color: #fff; }
+        .rank-other { background: var(--bg-secondary); color: var(--text-secondary); }
+
+        .pnl-positive { color: var(--accent-green); font-weight: 600; }
+        .pnl-negative { color: var(--accent-red); font-weight: 600; }
+
+        .strategy-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .tag-technical { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .tag-momentum { background: rgba(245, 158, 11, 0.2); color: var(--accent-yellow); }
+        .tag-statistical { background: rgba(139, 92, 246, 0.2); color: var(--accent-purple); }
+        .tag-orderflow { background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); }
+        .tag-hybrid { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .tag-regime { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .tag-ensemble { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+
+        /* Group Cards */
+        .groups-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+        }
+
+        .group-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .group-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .group-card h3 {
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .group-card .desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .group-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .group-stat {
+            text-align: center;
+            padding: 4px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
+
+        .group-stat .value {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .group-stat .label {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        /* Evolution Section */
+        .evolution-section { grid-column: 1 / -1; }
+
+        .evolution-log {
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            padding: 8px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+        }
+
+        .evo-entry { padding: 2px 0; }
+        .evo-fire { color: var(--accent-red); }
+        .evo-hire { color: var(--accent-green); }
+        .evo-elite { color: var(--accent-yellow); }
+
+        /* Settings Panel */
+        .settings-panel {
+            display: none;
+            position: fixed;
+            top: 60px;
+            right: 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            z-index: 200;
+            width: 300px;
+        }
+
+        .settings-panel.active { display: block; }
+
+        .setting-group { margin-bottom: 16px; }
+
+        .setting-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .setting-group input, .setting-group select {
+            width: 100%;
+            padding: 6px 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-grid { grid-template-columns: 1fr; }
+            .price-tickers { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>BOTBOT Trading Arena</h1>
+        <div class="header-controls">
+            <span id="statusBadge" class="status-badge status-idle">IDLE</span>
+            <span id="genBadge" style="font-size:12px;color:var(--text-secondary)">Gen: 0</span>
+            <button class="btn btn-primary" id="startBtn" onclick="startSimulation()">Start</button>
+            <button class="btn btn-danger" id="stopBtn" onclick="stopSimulation()" style="display:none">Stop</button>
+            <button class="btn" style="background:var(--border-color);color:var(--text-primary)" onclick="toggleSettings()">Settings</button>
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div class="settings-panel" id="settingsPanel">
+        <h3 style="margin-bottom:12px;font-size:16px">Simulation Settings</h3>
+        <div class="setting-group">
+            <label>Number of Candles</label>
+            <input type="number" id="nCandles" value="1000" min="100" max="10000">
+        </div>
+        <div class="setting-group">
+            <label>Simulation Speed</label>
+            <input type="range" id="speed" min="1" max="100" value="20">
+            <span id="speedValue" style="font-size:12px;color:var(--text-secondary)">20x</span>
+        </div>
+        <div class="setting-group">
+            <label>Symbols (comma-separated)</label>
+            <input type="text" id="symbols" value="BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT">
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="toggleSettings()">Close</button>
+    </div>
+
+    <div class="main-grid">
+        <!-- Progress -->
+        <div class="card progress-section">
+            <div class="card-title"><span class="icon">&#9881;</span> Simulation Progress</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+            </div>
+            <div class="progress-stats">
+                <span id="progressText">0 / 0 candles</span>
+                <span id="progressPct">0%</span>
+            </div>
+        </div>
+
+        <!-- Price Tickers -->
+        <div class="card price-section">
+            <div class="card-title"><span class="icon">&#9733;</span> Market Prices</div>
+            <div class="price-tickers" id="priceTickers">
+                <div class="price-ticker">
+                    <div class="symbol">BTCUSDT</div>
+                    <div class="price">--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Leaderboard -->
+        <div class="card leaderboard-section">
+            <div class="card-title"><span class="icon">&#9813;</span> Global Leaderboard - Top 20</div>
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Agent</th>
+                        <th>Group</th>
+                        <th>Strategy</th>
+                        <th>PnL ($)</th>
+                        <th>PnL %</th>
+                        <th>Win Rate</th>
+                        <th>Trades</th>
+                        <th>Max DD</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                    <tr><td colspan="9" style="text-align:center;color:var(--text-secondary);padding:40px">
+                        Start a simulation to see results
+                    </td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Agent Groups -->
+        <div class="card" style="grid-column: 1 / -1">
+            <div class="card-title"><span class="icon">&#9775;</span> Agent Groups</div>
+            <div class="groups-grid" id="groupsGrid">
+                <div style="text-align:center;color:var(--text-secondary);padding:40px;grid-column:1/-1">
+                    Waiting for simulation...
+                </div>
+            </div>
+        </div>
+
+        <!-- Evolution Log -->
+        <div class="card evolution-section">
+            <div class="card-title"><span class="icon">&#9850;</span> Evolution Log (Hire & Fire)</div>
+            <div class="evolution-log" id="evolutionLog">
+                <div style="color:var(--text-secondary)">Evolution events will appear here...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let isRunning = false;
+
+        // Speed slider
+        document.getElementById('speed').addEventListener('input', function() {
+            document.getElementById('speedValue').textContent = this.value + 'x';
+        });
+
+        function toggleSettings() {
+            document.getElementById('settingsPanel').classList.toggle('active');
+        }
+
+        async function startSimulation() {
+            const nCandles = document.getElementById('nCandles').value;
+            const speed = document.getElementById('speed').value;
+            const symbols = document.getElementById('symbols').value;
+
+            try {
+                const resp = await fetch(`/api/simulation/start?n_candles=${nCandles}&speed=${speed}&symbols=${encodeURIComponent(symbols)}`, {
+                    method: 'POST'
+                });
+                const data = await resp.json();
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                isRunning = true;
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('stopBtn').style.display = 'inline-block';
+                document.getElementById('statusBadge').className = 'status-badge status-running';
+                document.getElementById('statusBadge').textContent = 'RUNNING';
+
+                connectWebSocket();
+            } catch(e) {
+                console.error('Failed to start:', e);
+            }
+        }
+
+        async function stopSimulation() {
+            try {
+                await fetch('/api/simulation/stop', { method: 'POST' });
+            } catch(e) {}
+            isRunning = false;
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('statusBadge').className = 'status-badge status-idle';
+            document.getElementById('statusBadge').textContent = 'STOPPED';
+            if (ws) ws.close();
+        }
+
+        function connectWebSocket() {
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+            ws.onmessage = function(event) {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'state_update') {
+                    updateDashboard(msg.data);
+                } else if (msg.type === 'simulation_complete') {
+                    onSimulationComplete(msg.data);
+                }
+            };
+
+            ws.onclose = function() {
+                if (isRunning) {
+                    setTimeout(connectWebSocket, 2000);
+                }
+            };
+        }
+
+        function updateDashboard(data) {
+            // Progress
+            document.getElementById('progressBar').style.width = data.progress_pct + '%';
+            document.getElementById('progressText').textContent = `${data.candle_index} / ${data.total_candles} candles`;
+            document.getElementById('progressPct').textContent = data.progress_pct + '%';
+            document.getElementById('genBadge').textContent = `Gen: ${data.evolution_generation}`;
+
+            // Prices
+            updatePrices(data.prices);
+
+            // Leaderboard
+            updateLeaderboard(data.global_leaderboard);
+
+            // Groups
+            updateGroups(data.groups);
+        }
+
+        function updatePrices(prices) {
+            const container = document.getElementById('priceTickers');
+            let html = '';
+            for (const [symbol, price] of Object.entries(prices)) {
+                const displaySymbol = symbol.replace('USDT', '');
+                html += `
+                    <div class="price-ticker">
+                        <div class="symbol">${displaySymbol}</div>
+                        <div class="price">$${formatNumber(price)}</div>
+                    </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function updateLeaderboard(agents) {
+            const tbody = document.getElementById('leaderboardBody');
+            if (!agents || agents.length === 0) return;
+
+            let html = '';
+            agents.forEach((agent, i) => {
+                const rank = i + 1;
+                const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
+                const pnlClass = agent.total_pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                const tagClass = getTagClass(agent.group);
+
+                html += `
+                    <tr>
+                        <td><span class="rank-badge ${rankClass}">${rank}</span></td>
+                        <td style="font-weight:600">${agent.name || agent.agent_id}</td>
+                        <td><span class="strategy-tag ${tagClass}">${agent.group}</span></td>
+                        <td>${agent.strategy || '-'}</td>
+                        <td class="${pnlClass}">${agent.total_pnl >= 0 ? '+' : ''}$${formatNumber(agent.total_pnl)}</td>
+                        <td class="${pnlClass}">${agent.pnl_percent >= 0 ? '+' : ''}${agent.pnl_percent}%</td>
+                        <td>${agent.win_rate}%</td>
+                        <td>${agent.total_trades}</td>
+                        <td style="color:var(--accent-red)">${agent.max_drawdown}%</td>
+                    </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function updateGroups(groups) {
+            const container = document.getElementById('groupsGrid');
+            if (!groups || groups.length === 0) return;
+
+            let html = '';
+            groups.forEach((group, idx) => {
+                const pnlClass = group.total_pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                const tagClass = getTagClass(group.category);
+
+                html += `
+                    <div class="group-card" onclick="showGroupDetail(${idx})">
+                        <h3>${group.name} <span class="strategy-tag ${tagClass}">${group.category}</span></h3>
+                        <div class="desc">${group.total_agents} agents</div>
+                        <div class="group-stats">
+                            <div class="group-stat">
+                                <div class="value ${pnlClass}">${group.total_pnl >= 0 ? '+' : ''}$${formatNumber(group.total_pnl)}</div>
+                                <div class="label">Total PnL</div>
+                            </div>
+                            <div class="group-stat">
+                                <div class="value">${group.avg_win_rate}%</div>
+                                <div class="label">Avg Win Rate</div>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function addEvolutionEntry(result) {
+            const log = document.getElementById('evolutionLog');
+            let html = `<div class="evo-entry">`;
+            html += `<strong>Gen ${result.generation} - ${result.group_name}</strong> `;
+            html += `| Best: ${result.best_fitness} | Avg: ${result.avg_fitness}`;
+            if (result.fired && result.fired.length > 0) {
+                html += `<br><span class="evo-fire">FIRED: ${result.fired.join(', ')}</span>`;
+            }
+            if (result.elites && result.elites.length > 0) {
+                html += `<br><span class="evo-elite">ELITES: ${result.elites.join(', ')}</span>`;
+            }
+            html += `</div>`;
+            log.innerHTML = html + log.innerHTML;
+        }
+
+        function onSimulationComplete(data) {
+            isRunning = false;
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('statusBadge').className = 'status-badge status-complete';
+            document.getElementById('statusBadge').textContent = 'COMPLETE';
+
+            // Update with final results
+            if (data.global_leaderboard) {
+                updateLeaderboard(data.global_leaderboard);
+            }
+
+            // Show evolution history
+            if (data.evolution_history) {
+                data.evolution_history.forEach(result => addEvolutionEntry(result));
+            }
+        }
+
+        async function showGroupDetail(idx) {
+            try {
+                const resp = await fetch(`/api/groups/${idx}`);
+                const data = await resp.json();
+                console.log('Group detail:', data);
+                // Could open a modal here
+            } catch(e) {}
+        }
+
+        function getTagClass(category) {
+            const map = {
+                'technical': 'tag-technical',
+                'momentum': 'tag-momentum',
+                'statistical': 'tag-statistical',
+                'mean_reversion': 'tag-statistical',
+                'orderflow': 'tag-orderflow',
+                'regime': 'tag-regime',
+                'hybrid': 'tag-hybrid',
+                'hybrid_tech_mom': 'tag-hybrid',
+                'hybrid_of_tech': 'tag-hybrid',
+                'hybrid_conservative': 'tag-hybrid',
+                'hybrid_aggressive': 'tag-hybrid',
+                'ensemble': 'tag-ensemble',
+            };
+            return map[category] || 'tag-technical';
+        }
+
+        function formatNumber(num) {
+            if (num === undefined || num === null) return '0.00';
+            if (Math.abs(num) >= 1000) return num.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            return parseFloat(num).toFixed(2);
+        }
+
+        // Periodic polling fallback
+        setInterval(async () => {
+            if (!isRunning || ws?.readyState === WebSocket.OPEN) return;
+            try {
+                const resp = await fetch('/api/leaderboard');
+                const data = await resp.json();
+                if (data.leaderboard) updateLeaderboard(data.leaderboard);
+            } catch(e) {}
+        }, 3000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "simulation": {
+    "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"],
+    "n_candles": 1000,
+    "evolution_interval": 100,
+    "speed_multiplier": 10.0,
+    "use_real_data": false,
+    "broadcast_interval": 1
+  },
+  "exchange": {
+    "maker_fee": 0.0002,
+    "taker_fee": 0.0005,
+    "funding_rate": 0.0001,
+    "initial_balance": 10000.0
+  },
+  "evolution": {
+    "population_size": 30,
+    "elite_ratio": 0.2,
+    "mutation_rate": 0.3,
+    "mutation_strength": 0.2,
+    "crossover_rate": 0.5,
+    "tournament_size": 3,
+    "fire_ratio": 0.2,
+    "min_trades_for_eval": 5,
+    "prize_pool": 1000.0
+  },
+  "ranking": {
+    "daily_pool": 100.0,
+    "weekly_pool": 500.0,
+    "monthly_pool": 2000.0
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080
+  }
+}
