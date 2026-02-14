@@ -74,7 +74,25 @@ class BaseStrategy(ABC):
     def get_params(self) -> dict:
         return self.params.copy()
 
+    # Parameter constraints: keys that have known valid ranges.
+    # Subclasses can override this to add strategy-specific constraints.
+    PARAM_CONSTRAINTS: dict[str, tuple[float, float]] = {
+        "leverage": (1, 125),
+        "stop_loss_pct": (0.001, 0.5),
+        "take_profit_pct": (0.001, 1.0),
+        "confidence_threshold": (0.01, 1.0),
+        "rsi_overbought": (50, 99),
+        "rsi_oversold": (1, 50),
+        "lookback_period": (3, 500),
+        "z_score_entry": (0.1, 10.0),
+    }
+
     def set_params(self, params: dict) -> None:
+        """Update params with validation — clamp values to valid ranges."""
+        for key, value in params.items():
+            if key in self.PARAM_CONSTRAINTS and isinstance(value, (int, float)):
+                lo, hi = self.PARAM_CONSTRAINTS[key]
+                params[key] = type(value)(max(lo, min(hi, value)))
         self.params.update(params)
 
     def clone(self) -> BaseStrategy:

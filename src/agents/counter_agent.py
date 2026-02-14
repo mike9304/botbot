@@ -16,6 +16,7 @@ from typing import Optional
 
 from src.core.exchange import VirtualExchange
 from src.core.models import Candle, Side, TradeSignal
+from src.core.signal_bus import FireObserver, SignalObserver
 from src.strategies.counter_indicator import (
     CounterIndicatorStrategy,
     StrategyTypeCounterIndicatorStrategy,
@@ -26,11 +27,14 @@ from .base_agent import AgentConfig, TradingAgent
 logger = logging.getLogger(__name__)
 
 
-class CounterIndicatorAgent(TradingAgent):
+class CounterIndicatorAgent(TradingAgent, SignalObserver, FireObserver):
     """An agent that monitors other agents and inverts signals from consistent losers.
 
+    Implements SignalObserver and FireObserver so it self-registers with the SignalBus
+    instead of requiring isinstance() checks in SimulationEngine.
+
     Flow:
-    1. on_other_agent_signal(): Called when any other agent generates a signal
+    1. on_signal(): Called via SignalBus when any agent generates a signal
     2. The CounterIndicatorStrategy tracks that agent's accuracy
     3. If the source agent is a "reliable loser", generate an inverted signal
     4. Execute the inverted signal on the exchange
@@ -44,6 +48,17 @@ class CounterIndicatorAgent(TradingAgent):
         self._feedback_loop_resets = 0
         self._current_regime = "unknown"
 
+    def on_signal(
+        self,
+        source_agent_id: str,
+        strategy_name: str,
+        strategy_category: str,
+        signal: TradeSignal,
+        current_price: float,
+    ) -> None:
+        """SignalObserver interface — called via SignalBus when any agent signals."""
+        self.on_other_agent_signal(source_agent_id, strategy_name, signal, current_price)
+
     def on_other_agent_signal(
         self,
         source_agent_id: str,
@@ -51,10 +66,7 @@ class CounterIndicatorAgent(TradingAgent):
         signal: TradeSignal,
         current_price: float,
     ):
-        """Process a signal from another agent.
-
-        This is called by the simulation engine whenever ANY agent generates a signal.
-        """
+        """Process a signal from another agent."""
         if not self.active:
             return
 
@@ -123,8 +135,10 @@ class CounterIndicatorAgent(TradingAgent):
         return self.counter_strategy.get_tracking_report()
 
 
-class StrategyTypeCounterAgent(TradingAgent):
+class StrategyTypeCounterAgent(TradingAgent, SignalObserver):
     """Counter agent at the strategy TYPE level.
+
+    Implements SignalObserver so it self-registers with the SignalBus.
 
     Instead of tracking individual agents, this tracks strategy categories.
     When an entire category (e.g., "momentum") is losing, it inverts ALL
@@ -139,6 +153,17 @@ class StrategyTypeCounterAgent(TradingAgent):
         self._observed_count = 0
         self._inverted_count = 0
         self._current_regime = "unknown"
+
+    def on_signal(
+        self,
+        source_agent_id: str,
+        strategy_name: str,
+        strategy_category: str,
+        signal: TradeSignal,
+        current_price: float,
+    ) -> None:
+        """SignalObserver interface — routes to strategy type tracking."""
+        self.on_strategy_type_signal(strategy_category, signal, current_price)
 
     def on_strategy_type_signal(
         self,

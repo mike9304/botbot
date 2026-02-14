@@ -36,6 +36,7 @@ import numpy as np
 from src.agents.base_agent import AgentConfig, AgentGroup, TradingAgent
 from src.core.exchange import VirtualExchange
 from src.core.models import Candle, Side, TradeSignal
+from src.core.signal_bus import LoserSignalObserver
 from src.strategies.base import BaseStrategy, HybridStrategy
 
 logger = logging.getLogger(__name__)
@@ -121,6 +122,20 @@ class LoserLeague:
 
         if len(source_losers) < 2:
             return []
+
+        # Cap group size: remove oldest agents if pool is too large
+        max_size = self.config.loser_pool_size
+        if len(loser_group.agents) >= max_size:
+            # Sort by fitness ascending (worst first = best for inversion, keep)
+            loser_group.agents.sort(key=lambda a: a.fitness)
+            # Keep the best losers (worst fitness), remove the rest
+            removed = loser_group.agents[max_size:]
+            loser_group.agents = loser_group.agents[:max_size]
+            for agent in removed:
+                agent.active = False
+            logger.info(
+                f"LoserLeague: capped pool to {max_size}, removed {len(removed)} stale agents"
+            )
 
         # Select "elite losers" (the WORST performers)
         n_elite = max(2, int(len(source_losers) * self.config.evolution_elite_ratio))
@@ -212,10 +227,10 @@ class LoserLeague:
         return child
 
 
-class InverseLoserAgent(TradingAgent):
+class InverseLoserAgent(TradingAgent, LoserSignalObserver):
     """Agent that watches the Loser League and inverts all their signals.
 
-    This is the profit-making companion to the Loser League.
+    Implements LoserSignalObserver so it self-registers with the SignalBus.
     Every signal the losers generate gets flipped.
     """
 

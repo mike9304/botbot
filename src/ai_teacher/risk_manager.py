@@ -102,7 +102,12 @@ class RiskManager:
         self.symbol_crowding: dict[str, dict[str, int]] = {}  # {symbol: {LONG: n, SHORT: n}}
 
     def check_all(self, groups: list[AgentGroup]) -> list[RiskAlert]:
-        """Run all risk checks across all groups. Returns new alerts."""
+        """Run all risk checks and enforce critical actions. Returns new alerts.
+
+        Two-phase approach (command-query separation):
+        1. _check_* methods only generate alerts (pure queries)
+        2. _enforce_alerts() applies side effects (disable agents, etc.)
+        """
         self.check_count += 1
         new_alerts = []
 
@@ -114,9 +119,28 @@ class RiskManager:
         # Portfolio-wide checks
         new_alerts.extend(self._check_correlation(groups))
 
+        # Enforce actions from critical alerts
+        self._enforce_alerts(new_alerts, groups)
+
         self.alerts = new_alerts
         self.alerts_history.extend(new_alerts)
         return new_alerts
+
+    def _enforce_alerts(
+        self, alerts: list[RiskAlert], groups: list[AgentGroup]
+    ) -> None:
+        """Apply side effects from risk alerts (separate from checking)."""
+        for alert in alerts:
+            if alert.action_taken != "AGENT_DISABLED":
+                continue
+            if not alert.agent_id:
+                continue
+            for group in groups:
+                for agent in group.agents:
+                    if agent.id == alert.agent_id and agent.active:
+                        agent.active = False
+                        self.disabled_agents.add(agent.id)
+                        logger.warning(f"Risk enforcement: disabled {agent.config.name}")
 
     def _check_agent(self, agent: TradingAgent, group_name: str) -> list[RiskAlert]:
         """Check individual agent risk metrics."""
@@ -125,10 +149,8 @@ class RiskManager:
         if not account or not agent.active:
             return alerts
 
-        # 1. Drawdown check
+        # 1. Drawdown check (generate alert only; enforcement is in _enforce_alerts)
         if account.max_drawdown >= self.config.max_drawdown_critical:
-            agent.active = False
-            self.disabled_agents.add(agent.id)
             alerts.append(RiskAlert(
                 level=RiskLevel.CRITICAL,
                 agent_id=agent.id,

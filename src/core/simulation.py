@@ -7,6 +7,7 @@ Runs the trading simulation with:
 - Loser League (evolve worst agents as reverse indicators)
 - AI Teacher & Risk Manager (LLM-powered oversight)
 - Real-time data broadcasting via WebSocket
+- SignalBus for decoupled agent communication
 """
 from __future__ import annotations
 
@@ -18,15 +19,20 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from src.agents.base_agent import AgentGroup, TradingAgent
-from src.agents.counter_agent import CounterIndicatorAgent, StrategyTypeCounterAgent
 from src.agents.group_factory import DEFAULT_SYMBOLS, create_all_groups
 from src.ai_teacher.llm_client import LLMConfig, LLMProvider
 from src.ai_teacher.teacher import AITeacher, TeacherConfig
 from src.core.exchange import VirtualExchange
 from src.core.models import Candle, TradeSignal
+from src.core.signal_bus import (
+    FireObserver,
+    LoserSignalObserver,
+    SignalBus,
+    SignalObserver,
+)
 from src.data.market_data import generate_multi_symbol_data
 from src.evolution.genetic import EvolutionConfig, GeneticEvolver
-from src.evolution.loser_evolution import InverseLoserAgent, LoserLeague
+from src.evolution.loser_evolution import LoserLeague
 
 logger = logging.getLogger(__name__)
 
@@ -49,34 +55,35 @@ class SimulationConfig:
 
 
 class SimulationEngine:
-    """Main simulation engine with AI Teacher oversight."""
+    """Main simulation engine with AI Teacher oversight.
+
+    Uses SignalBus for decoupled communication between agents.
+    Meta-agents (counter-indicators, inverse losers) self-register
+    as observers instead of being tracked via isinstance() checks.
+    """
 
     def __init__(self, config: Optional[SimulationConfig] = None):
         self.config = config or SimulationConfig()
         self.exchange = VirtualExchange()
         self.groups: list[AgentGroup] = []
         self.evolver = GeneticEvolver(EvolutionConfig())
+        self.signal_bus = SignalBus()
         self.current_candle_idx = 0
         self.running = False
         self.market_data: dict[str, list[Candle]] = {}
         self.subscribers: list[asyncio.Queue] = []
         self.rankings_history: list[dict] = []
 
-        # Counter-indicator tracking
-        self.counter_agents: list[CounterIndicatorAgent] = []
-        self.type_counter_agents: list[StrategyTypeCounterAgent] = []
-
         # Loser League system
         self.loser_league = LoserLeague()
         self.loser_group: Optional[AgentGroup] = None
-        self.inverse_loser_agents: list[InverseLoserAgent] = []
 
         # AI Teacher
         self.teacher: Optional[AITeacher] = None
         if self.config.ai_teacher_enabled:
             self._setup_teacher()
 
-    def _setup_teacher(self):
+    def _setup_teacher(self) -> None:
         """Initialize the AI Teacher with configured LLM provider."""
         provider_map = {
             "offline": LLMProvider.OFFLINE,
@@ -110,30 +117,31 @@ class SimulationEngine:
         total_agents = sum(len(g.agents) for g in self.groups)
         logger.info(f"Created {len(self.groups)} groups with {total_agents} total agents")
 
-        # Collect special agent types
+        # Auto-register observer agents with the SignalBus
         for group in self.groups:
             for agent in group.agents:
-                if isinstance(agent, CounterIndicatorAgent):
-                    self.counter_agents.append(agent)
-                elif isinstance(agent, StrategyTypeCounterAgent):
-                    self.type_counter_agents.append(agent)
-                elif isinstance(agent, InverseLoserAgent):
-                    self.inverse_loser_agents.append(agent)
+                if isinstance(agent, SignalObserver):
+                    self.signal_bus.register_signal_observer(agent)
+                if isinstance(agent, FireObserver):
+                    self.signal_bus.register_fire_observer(agent)
+                if isinstance(agent, LoserSignalObserver):
+                    self.signal_bus.register_loser_signal_observer(agent)
 
             # Find loser league group
             if group.category == "loser_league":
                 self.loser_group = group
 
-        if self.counter_agents or self.type_counter_agents:
+        bus_stats = self.signal_bus.stats
+        if bus_stats["signal_observers"]:
             logger.info(
-                f"Counter-indicator system: {len(self.counter_agents)} agent-level, "
-                f"{len(self.type_counter_agents)} type-level counters active"
+                f"SignalBus: {bus_stats['signal_observers']} signal observers, "
+                f"{bus_stats['fire_observers']} fire observers, "
+                f"{bus_stats['loser_signal_observers']} loser signal observers"
             )
 
         if self.loser_group:
             logger.info(
-                f"Loser League: {len(self.loser_group.agents)} seed agents, "
-                f"{len(self.inverse_loser_agents)} inverse loser agents"
+                f"Loser League: {len(self.loser_group.agents)} seed agents"
             )
 
         if self.teacher:
@@ -174,29 +182,31 @@ class SimulationEngine:
                 for group in self.groups:
                     signals = group.on_candle(candle)
 
-                    # Forward signals to counter-indicator agents
+                    # Route all signals through the SignalBus
+                    is_loser_group = group.category == "loser_league"
                     for agent, signal in signals:
-                        current_price = self.exchange.current_prices.get(signal.symbol, 0)
+                        current_price = self.exchange.current_prices.get(
+                            signal.symbol, 0
+                        )
                         if current_price <= 0:
                             continue
 
-                        # Counter-indicator agents
-                        for counter in self.counter_agents:
-                            counter.on_other_agent_signal(
-                                agent.id, agent.strategy.name,
-                                signal, current_price,
-                            )
-                        for type_counter in self.type_counter_agents:
-                            type_counter.on_strategy_type_signal(
-                                agent.strategy.category, signal, current_price,
-                            )
+                        strategy_name = agent.strategy.name
+                        strategy_category = getattr(
+                            agent.strategy, "category", "unknown"
+                        )
 
-                        # Forward loser league signals to inverse loser agents
-                        if group.category == "loser_league":
-                            for inv_agent in self.inverse_loser_agents:
-                                inv_agent.on_loser_signal(
-                                    agent.id, signal, current_price,
-                                )
+                        # All observers get notified via bus
+                        self.signal_bus.publish_signal(
+                            agent.id, strategy_name, strategy_category,
+                            signal, current_price,
+                        )
+
+                        # Loser league signals also go to loser observers
+                        if is_loser_group:
+                            self.signal_bus.publish_loser_signal(
+                                agent.id, signal, current_price,
+                            )
 
             # Quick risk check (every 25 candles)
             if self.teacher and i > 0 and i % self.config.risk_check_interval == 0:
@@ -226,7 +236,7 @@ class SimulationEngine:
 
         return final
 
-    async def _run_evolution_with_teacher(self):
+    async def _run_evolution_with_teacher(self) -> None:
         """Run evolution cycle with AI Teacher oversight."""
         logger.info(f"Running evolution at candle {self.current_candle_idx}")
 
@@ -253,9 +263,12 @@ class SimulationEngine:
                 },
             })
 
-        # 2. Regular genetic evolution
+        # 2. Regular genetic evolution — notify bus when agents are fired
         for group in self.groups:
             result = self.evolver.evolve_group(group, self.exchange)
+            # Notify counter-indicators about fired agents
+            for fired_name in result.fired_names:
+                self.signal_bus.publish_agent_fired(fired_name)
             logger.info(
                 f"  {group.name}: best={result.best_fitness:.2f} "
                 f"avg={result.avg_fitness:.2f} fired={result.agents_fired}"
@@ -413,7 +426,7 @@ class SimulationEngine:
         if queue in self.subscribers:
             self.subscribers.remove(queue)
 
-    async def _broadcast(self, data: dict):
+    async def _broadcast(self, data: dict) -> None:
         """Broadcast state to all subscribers."""
         message = json.dumps(data, default=str)
         for queue in self.subscribers:
