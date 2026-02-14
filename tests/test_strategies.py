@@ -2,6 +2,8 @@
 import numpy as np
 import pytest
 
+from tests.conftest import make_candles
+
 from src.core.models import Candle, Side
 from src.data.market_data import generate_synthetic_data
 from src.strategies.advanced import (
@@ -24,23 +26,6 @@ from src.strategies.technical import (
 )
 
 
-def _make_candles(prices: list[float], volumes: list[float] | None = None) -> list[Candle]:
-    """Helper to create candle list from close prices."""
-    candles = []
-    for i, price in enumerate(prices):
-        vol = volumes[i] if volumes else 1000
-        candles.append(Candle(
-            timestamp=float(i * 3600),
-            open=price * 0.999,
-            high=price * 1.005,
-            low=price * 0.995,
-            close=price,
-            volume=vol,
-            symbol="BTCUSDT",
-        ))
-    return candles
-
-
 class TestRSIMACDStrategy:
     def test_default_params(self):
         strategy = RSIMACDStrategy()
@@ -50,7 +35,7 @@ class TestRSIMACDStrategy:
 
     def test_analyze_returns_none_when_insufficient_data(self):
         strategy = RSIMACDStrategy()
-        candles = _make_candles([50000] * 10)
+        candles = make_candles([50000] * 10)
         result = strategy.analyze(candles)
         assert result is None  # Not enough data
 
@@ -122,34 +107,30 @@ class TestHybridStrategy:
 class TestAllStrategies:
     """Run all strategies through synthetic data to ensure no crashes."""
 
-    @pytest.fixture
-    def candles(self):
-        return generate_synthetic_data("BTCUSDT", n_candles=300, volatility=0.025)
-
-    def test_ema_triple_cross(self, candles):
+    def test_ema_triple_cross(self, sample_candles):
         s = EMATripleCrossStrategy()
-        s.analyze(candles)
+        s.analyze(sample_candles)
 
-    def test_fibonacci(self, candles):
+    def test_fibonacci(self, sample_candles):
         s = FibonacciRetracementStrategy()
-        s.analyze(candles)
+        s.analyze(sample_candles)
 
-    def test_volume_profile(self, candles):
+    def test_volume_profile(self, sample_candles):
         s = VolumeProfileStrategy()
-        s.analyze(candles)
+        s.analyze(sample_candles)
 
-    def test_rsi_trend_momentum(self, candles):
+    def test_rsi_trend_momentum(self, sample_candles):
         s = RSITrendMomentumStrategy()
-        s.analyze(candles)
+        s.analyze(sample_candles)
 
-    def test_order_flow(self, candles):
+    def test_order_flow(self, sample_candles):
         s = OrderFlowImbalanceStrategy()
-        s.analyze(candles)
+        s.analyze(sample_candles)
 
-    def test_smc(self, candles):
+    def test_smc(self, sample_candles):
         s = SmartMoneyConceptStrategy()
-        s.analyze(candles)
+        s.analyze(sample_candles)
 
-    def test_market_regime(self, candles):
+    def test_market_regime(self, sample_candles):
         s = MarketRegimeStrategy()
-        s.analyze(candles)
+        s.analyze(sample_candles)

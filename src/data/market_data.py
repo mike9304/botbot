@@ -79,13 +79,21 @@ async def fetch_multiple_symbols(
     interval: str = "1h",
     limit: int = 500,
 ) -> dict[str, list[Candle]]:
-    """Fetch historical data for multiple symbols concurrently."""
-    tasks = [
-        fetch_historical_klines(symbol, interval, limit)
-        for symbol in symbols
-    ]
-    results = await asyncio.gather(*tasks)
-    return {symbol: candles for symbol, candles in zip(symbols, results)}
+    """Fetch historical data for multiple symbols concurrently.
+
+    Uses asyncio.TaskGroup (Python 3.11+) for structured concurrency:
+    if any fetch fails, all remaining fetches are cancelled automatically.
+    """
+    results: dict[str, list[Candle]] = {}
+
+    async def _fetch_one(symbol: str) -> None:
+        results[symbol] = await fetch_historical_klines(symbol, interval, limit)
+
+    async with asyncio.TaskGroup() as tg:
+        for symbol in symbols:
+            tg.create_task(_fetch_one(symbol))
+
+    return results
 
 
 def generate_synthetic_data(

@@ -1,4 +1,10 @@
-"""Core data models for the trading simulation system."""
+"""Core data models for the trading simulation system.
+
+Uses a hybrid approach:
+- Candle: stays as @dataclass for hot-path performance (~10k+ instances/sim)
+- TradeSignal, AccountState: Pydantic v2 BaseModel for validation & serialization
+- Position, Order: @dataclass (mutated frequently by exchange)
+"""
 from __future__ import annotations
 
 import time
@@ -6,6 +12,8 @@ import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Side(str, Enum):
@@ -36,8 +44,11 @@ class TimeFrame(str, Enum):
     D1 = "1d"
 
 
+# ── Hot-path models (dataclass for zero-overhead construction) ──────────────
+
 @dataclass
 class Candle:
+    """OHLCV candle. Kept as dataclass for performance in hot loops."""
     timestamp: float
     open: float
     high: float
@@ -111,9 +122,45 @@ class Position:
         return self.liquidation_price
 
 
-@dataclass
-class AccountState:
-    balance: float = 10000.0  # Starting USDT balance
+# ── Validated models (Pydantic v2 for validation & serialization) ───────────
+
+class TradeSignal(BaseModel):
+    """A trading signal with built-in validation.
+
+    Pydantic v2 gives us:
+    - Automatic confidence clamping to [0, 1]
+    - Leverage range enforcement (1-125)
+    - JSON serialization via .model_dump()
+    """
+    model_config = {"frozen": False}
+
+    symbol: str
+    side: Side
+    confidence: float = Field(ge=0.0, le=1.0)
+    strategy_name: str
+    leverage: int = Field(default=1, ge=1, le=125)
+    stop_loss_pct: Optional[float] = Field(default=None, ge=0.001, le=0.5)
+    take_profit_pct: Optional[float] = Field(default=None, ge=0.001, le=1.0)
+    reason: str = ""
+    timestamp: float = Field(default_factory=time.time)
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def clamp_confidence(cls, v: float) -> float:
+        return max(0.0, min(1.0, v))
+
+
+class AccountState(BaseModel):
+    """Account state with computed properties.
+
+    Pydantic v2 gives us:
+    - Automatic serialization for API responses
+    - Validation on construction
+    - Computed properties via @property
+    """
+    model_config = {"frozen": False, "arbitrary_types_allowed": True}
+
+    balance: float = 10000.0
     equity: float = 10000.0
     available_margin: float = 10000.0
     initial_balance: float = 10000.0
@@ -122,8 +169,8 @@ class AccountState:
     win_count: int = 0
     loss_count: int = 0
     total_trades: int = 0
-    positions: dict[str, Position] = field(default_factory=dict)
-    order_history: list[Order] = field(default_factory=list)
+    positions: dict[str, Position] = Field(default_factory=dict)
+    order_history: list[Order] = Field(default_factory=list)
     peak_equity: float = 10000.0
     max_drawdown: float = 0.0
 
@@ -145,16 +192,3 @@ class AccountState:
         current_dd = (self.peak_equity - self.equity) / self.peak_equity
         if current_dd > self.max_drawdown:
             self.max_drawdown = current_dd
-
-
-@dataclass
-class TradeSignal:
-    symbol: str
-    side: Side
-    confidence: float  # 0.0 - 1.0
-    strategy_name: str
-    leverage: int = 1
-    stop_loss_pct: Optional[float] = None  # e.g., 0.02 = 2%
-    take_profit_pct: Optional[float] = None
-    reason: str = ""
-    timestamp: float = field(default_factory=time.time)

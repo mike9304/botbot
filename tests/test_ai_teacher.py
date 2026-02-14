@@ -1,7 +1,8 @@
 """Tests for the AI Teacher & Risk Manager system."""
 import asyncio
 import pytest
-from unittest.mock import MagicMock
+
+from tests.conftest import simulate_trades
 
 from src.agents.base_agent import AgentConfig, AgentGroup, TradingAgent
 from src.ai_teacher.llm_client import (
@@ -16,56 +17,6 @@ from src.ai_teacher.teacher import (
 from src.core.exchange import VirtualExchange
 from src.core.models import AccountState, Candle, Position, Side
 from src.strategies.technical import RSIMACDStrategy
-
-
-@pytest.fixture
-def exchange():
-    return VirtualExchange()
-
-
-@pytest.fixture
-def agent(exchange):
-    config = AgentConfig(
-        name="test_agent",
-        group="test",
-        strategy=RSIMACDStrategy(),
-        symbols=["BTCUSDT"],
-    )
-    return TradingAgent(config, exchange)
-
-
-@pytest.fixture
-def group_with_agents(exchange):
-    group = AgentGroup(name="Test Group", description="Test", category="test")
-    for i in range(5):
-        config = AgentConfig(
-            name=f"agent_{i}",
-            group="test",
-            strategy=RSIMACDStrategy(),
-            symbols=["BTCUSDT"],
-        )
-        agent = TradingAgent(config, exchange)
-        group.add_agent(agent)
-    return group
-
-
-def _simulate_trades(agent, exchange, n_wins=3, n_losses=2):
-    """Helper to simulate trades for an agent."""
-    account = agent.account
-    if not account:
-        return
-    for i in range(n_wins):
-        account.win_count += 1
-        account.total_trades += 1
-        account.total_pnl += 100
-        account.equity += 100
-        account.balance += 100
-    for i in range(n_losses):
-        account.loss_count += 1
-        account.total_trades += 1
-        account.total_pnl -= 50
-        account.equity -= 50
-        account.balance -= 50
 
 
 # === LLM Client Tests ===
@@ -145,7 +96,7 @@ class TestRiskManager:
         assert alerts == []
 
     def test_drawdown_warning(self, agent, exchange):
-        _simulate_trades(agent, exchange)
+        simulate_trades(agent)
         account = agent.account
         account.max_drawdown = 0.25  # 25% drawdown
 
@@ -159,7 +110,7 @@ class TestRiskManager:
         assert drawdown_alerts[0].level == RiskLevel.HIGH
 
     def test_drawdown_critical_disables_agent(self, agent, exchange):
-        _simulate_trades(agent, exchange)
+        simulate_trades(agent)
         account = agent.account
         account.max_drawdown = 0.35  # 35% drawdown — exceeds 30% critical
 
@@ -174,7 +125,7 @@ class TestRiskManager:
         assert agent.id in rm.disabled_agents
 
     def test_evaluate_agent_performance(self, agent, exchange):
-        _simulate_trades(agent, exchange, n_wins=7, n_losses=3)
+        simulate_trades(agent, n_wins=7, n_losses=3)
 
         rm = RiskManager()
         evaluation = rm.evaluate_agent_performance(agent)
@@ -247,7 +198,7 @@ class TestAITeacher:
 
         # Simulate some trades
         for agent in group_with_agents.agents:
-            _simulate_trades(agent, exchange, n_wins=5, n_losses=3)
+            simulate_trades(agent, n_wins=5, n_losses=3)
 
         report = asyncio.get_event_loop().run_until_complete(
             teacher.evaluate_generation([group_with_agents], candle_index=100)
@@ -264,7 +215,7 @@ class TestAITeacher:
         teacher = AITeacher(config)
 
         for agent in group_with_agents.agents:
-            _simulate_trades(agent, exchange, n_wins=5, n_losses=3)
+            simulate_trades(agent, n_wins=5, n_losses=3)
 
         report = asyncio.get_event_loop().run_until_complete(
             teacher.evaluate_generation([group_with_agents], candle_index=100)
@@ -280,7 +231,7 @@ class TestAITeacher:
         teacher = AITeacher(config)
 
         for agent in group_with_agents.agents:
-            _simulate_trades(agent, exchange, n_wins=5, n_losses=3)
+            simulate_trades(agent, n_wins=5, n_losses=3)
 
         report = asyncio.get_event_loop().run_until_complete(
             teacher.evaluate_generation([group_with_agents], candle_index=100)
@@ -330,7 +281,7 @@ class TestAITeacher:
         teacher = AITeacher(config)
 
         for agent in group_with_agents.agents:
-            _simulate_trades(agent, exchange, n_wins=5, n_losses=3)
+            simulate_trades(agent, n_wins=5, n_losses=3)
 
         report = asyncio.get_event_loop().run_until_complete(
             teacher.evaluate_generation([group_with_agents], candle_index=100)
@@ -347,7 +298,7 @@ class TestAITeacher:
         teacher = AITeacher(config)
 
         for agent in group_with_agents.agents:
-            _simulate_trades(agent, exchange)
+            simulate_trades(agent)
 
         # Run multiple evaluations
         for i in range(3):
@@ -365,7 +316,7 @@ class TestAITeacher:
         assert teacher.get_latest_report() is None
 
         for agent in group_with_agents.agents:
-            _simulate_trades(agent, exchange)
+            simulate_trades(agent)
 
         asyncio.get_event_loop().run_until_complete(
             teacher.evaluate_generation([group_with_agents], candle_index=100)

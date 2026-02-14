@@ -20,18 +20,22 @@ Usage:
 from __future__ import annotations
 
 import logging
-from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Protocol, runtime_checkable
 
 from src.core.models import TradeSignal
 
 logger = logging.getLogger(__name__)
 
 
-class SignalObserver(ABC):
-    """Interface for agents that observe other agents' signals."""
+@runtime_checkable
+class SignalObserver(Protocol):
+    """Structural interface for agents that observe other agents' signals.
 
-    @abstractmethod
+    Using Protocol (PEP 544) instead of ABC enables structural subtyping:
+    any class with a matching on_signal() method is automatically recognized
+    as a SignalObserver — no explicit inheritance required (duck typing).
+    """
+
     def on_signal(
         self,
         source_agent_id: str,
@@ -39,32 +43,26 @@ class SignalObserver(ABC):
         strategy_category: str,
         signal: TradeSignal,
         current_price: float,
-    ) -> None:
-        """Called when any agent generates a trading signal."""
-        ...
+    ) -> None: ...
 
 
-class FireObserver(ABC):
-    """Interface for agents that need to know when other agents are fired."""
+@runtime_checkable
+class FireObserver(Protocol):
+    """Structural interface for agents notified when other agents are fired."""
 
-    @abstractmethod
-    def on_agent_fired(self, fired_agent_id: str) -> None:
-        """Called when an agent is removed during evolution."""
-        ...
+    def on_agent_fired(self, fired_agent_id: str) -> None: ...
 
 
-class LoserSignalObserver(ABC):
-    """Interface for agents that observe loser league signals specifically."""
+@runtime_checkable
+class LoserSignalObserver(Protocol):
+    """Structural interface for agents that observe loser league signals."""
 
-    @abstractmethod
     def on_loser_signal(
         self,
         loser_id: str,
         signal: TradeSignal,
         current_price: float,
-    ) -> None:
-        """Called when a loser league agent generates a signal."""
-        ...
+    ) -> None: ...
 
 
 class SignalBus:
