@@ -240,6 +240,9 @@ class SentimentContrarianStrategy(BaseStrategy):
             "extreme_bullish_threshold": 65,
             "extreme_bearish_threshold": -65,
             "require_divergence": True,  # Price making new high but sentiment declining
+            "use_statistical_extreme": True,  # Kristoufek (2015): use 2σ threshold
+            "sigma_threshold": 2.0,  # Only trade at >2 standard deviations
+            "sigma_lookback": 30,  # Lookback for calculating σ
             "lag_periods": 3,
             "amplification": 2.0,
             "min_candles": 30,
@@ -259,6 +262,20 @@ class SentimentContrarianStrategy(BaseStrategy):
 
         if pd.isna(current_sent):
             return None
+
+        # Statistical extreme detection (Kristoufek, 2015)
+        # Only signal when sentiment is >2σ from its moving average
+        if self.params.get("use_statistical_extreme", False):
+            lookback = self.params["sigma_lookback"]
+            sigma_thresh = self.params["sigma_threshold"]
+            if len(sentiment.dropna()) >= lookback:
+                sent_ma = sentiment.rolling(lookback).mean().iloc[-1]
+                sent_std = sentiment.rolling(lookback).std().iloc[-1]
+                if pd.notna(sent_std) and sent_std > 0:
+                    z_score = (current_sent - sent_ma) / sent_std
+                    # Must exceed σ threshold to trade
+                    if abs(z_score) < sigma_thresh:
+                        return None  # Not extreme enough — stay flat
 
         bull_extreme = self.params["extreme_bullish_threshold"]
         bear_extreme = self.params["extreme_bearish_threshold"]
@@ -349,6 +366,8 @@ class SentimentMomentumStrategy(BaseStrategy):
             "acceleration_threshold": 15,  # Sentiment change per period
             "min_sentiment_level": 20,  # Don't trade in neutral zone
             "momentum_periods": 3,
+            "use_second_derivative": True,  # Trade sentiment acceleration (not just velocity)
+            "jerk_confirmation": True,  # Confirm with 2nd derivative sign
             "min_candles": 30,
             "max_history": 500,
             "leverage": 4,
@@ -367,15 +386,26 @@ class SentimentMomentumStrategy(BaseStrategy):
         if len(sentiment) < periods + 2:
             return None
 
-        # Sentiment acceleration
+        # Sentiment acceleration (1st derivative)
         sent_change = sentiment.iloc[-1] - sentiment.iloc[-periods - 1]
         current_sent = sentiment.iloc[-1]
+
+        # 2nd derivative: is acceleration itself increasing? (jerk)
+        if self.params.get("use_second_derivative") and len(sentiment) > periods * 2 + 2:
+            prev_change = sentiment.iloc[-periods - 1] - sentiment.iloc[-2 * periods - 1]
+            jerk = sent_change - prev_change  # Acceleration of acceleration
+            jerk_confirms_bull = jerk > 0
+            jerk_confirms_bear = jerk < 0
+        else:
+            jerk_confirms_bull = True
+            jerk_confirms_bear = True
 
         threshold = self.params["acceleration_threshold"]
         min_level = self.params["min_sentiment_level"]
 
-        # Strong bullish acceleration + already bullish
-        if sent_change > threshold and current_sent > min_level:
+        # Strong bullish acceleration + already bullish + jerk confirms
+        jerk_ok_bull = not self.params.get("jerk_confirmation") or jerk_confirms_bull
+        if sent_change > threshold and current_sent > min_level and jerk_ok_bull:
             confidence = min(0.5 + abs(sent_change) / 100, 0.8)
             return TradeSignal(
                 symbol=candles[-1].symbol,
@@ -391,8 +421,9 @@ class SentimentMomentumStrategy(BaseStrategy):
                 ),
             )
 
-        # Strong bearish acceleration + already bearish
-        if sent_change < -threshold and current_sent < -min_level:
+        # Strong bearish acceleration + already bearish + jerk confirms
+        jerk_ok_bear = not self.params.get("jerk_confirmation") or jerk_confirms_bear
+        if sent_change < -threshold and current_sent < -min_level and jerk_ok_bear:
             confidence = min(0.5 + abs(sent_change) / 100, 0.8)
             return TradeSignal(
                 symbol=candles[-1].symbol,

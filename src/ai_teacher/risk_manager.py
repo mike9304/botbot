@@ -21,8 +21,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
+import numpy as np
+
 from src.agents.base_agent import AgentGroup, TradingAgent
-from src.core.models import Side
+from src.core.models import Candle, Side
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +81,9 @@ class RiskManager:
 
     Runs every candle (or periodically) and generates risk alerts.
     The AI Teacher uses these alerts to provide feedback and guidance.
+
+    Includes turbulence index (Yang et al., 2020) — Mahalanobis distance
+    of multi-asset returns to detect abnormal market conditions.
     """
 
     def __init__(self, config: Optional[RiskConfig] = None):
@@ -87,6 +92,14 @@ class RiskManager:
         self.alerts_history: list[RiskAlert] = []
         self.disabled_agents: set[str] = set()
         self.check_count = 0
+
+        # Turbulence index tracking (Yang et al., 2020)
+        self.turbulence_index: float = 0.0
+        self.turbulence_history: list[float] = []
+        self._returns_history: list[dict[str, float]] = []  # [{symbol: return}, ...]
+
+        # Per-symbol crowding tracker
+        self.symbol_crowding: dict[str, dict[str, int]] = {}  # {symbol: {LONG: n, SHORT: n}}
 
     def check_all(self, groups: list[AgentGroup]) -> list[RiskAlert]:
         """Run all risk checks across all groups. Returns new alerts."""
@@ -340,4 +353,147 @@ class RiskManager:
                 else RiskLevel.MEDIUM if medium > 0
                 else RiskLevel.LOW
             ).value,
+            "turbulence_index": round(self.turbulence_index, 4),
+            "symbol_crowding": self.symbol_crowding,
         }
+
+    # === Turbulence Index (Yang et al., 2020) ===
+
+    def calculate_turbulence(
+        self, current_prices: dict[str, float], prev_prices: dict[str, float],
+    ) -> float:
+        """Calculate turbulence index using Mahalanobis distance of returns.
+
+        From: "Deep RL for Automated Stock Trading: An Ensemble Strategy"
+        Turbulence measures how unusual current market returns are compared
+        to the historical distribution. High turbulence = abnormal market.
+
+        Returns:
+            Turbulence score (0 = normal, >1 = elevated, >2 = extreme)
+        """
+        # Calculate current returns
+        current_returns = {}
+        for symbol in current_prices:
+            if symbol in prev_prices and prev_prices[symbol] > 0:
+                ret = (current_prices[symbol] - prev_prices[symbol]) / prev_prices[symbol]
+                current_returns[symbol] = ret
+
+        if len(current_returns) < 2:
+            return 0.0
+
+        # Store for history
+        self._returns_history.append(current_returns)
+        if len(self._returns_history) < 20:
+            return 0.0  # Need enough history
+
+        # Build returns matrix from history
+        symbols = sorted(current_returns.keys())
+        n_hist = min(len(self._returns_history), 100)
+        recent = self._returns_history[-n_hist:]
+
+        returns_matrix = []
+        for hist in recent:
+            row = [hist.get(s, 0.0) for s in symbols]
+            returns_matrix.append(row)
+
+        returns_matrix = np.array(returns_matrix)
+        if returns_matrix.shape[0] < 5:
+            return 0.0
+
+        # Mean and covariance of historical returns
+        mu = np.mean(returns_matrix, axis=0)
+        cov = np.cov(returns_matrix, rowvar=False)
+
+        # Current return vector
+        y = np.array([current_returns.get(s, 0.0) for s in symbols])
+        diff = y - mu
+
+        # Mahalanobis distance
+        try:
+            cov_inv = np.linalg.pinv(cov)  # Pseudo-inverse for stability
+            turbulence = float(diff @ cov_inv @ diff)
+            # Normalize by number of assets
+            turbulence = turbulence / len(symbols)
+        except np.linalg.LinAlgError:
+            turbulence = 0.0
+
+        self.turbulence_index = max(0.0, turbulence)
+        self.turbulence_history.append(self.turbulence_index)
+
+        return self.turbulence_index
+
+    def get_turbulence_regime(self) -> str:
+        """Classify current market based on turbulence.
+
+        Thresholds from empirical analysis:
+        - Normal: turbulence < 1.0
+        - Elevated: 1.0 <= turbulence < 2.5
+        - High: 2.5 <= turbulence < 5.0
+        - Extreme: turbulence >= 5.0
+        """
+        t = self.turbulence_index
+        if t >= 5.0:
+            return "extreme"
+        elif t >= 2.5:
+            return "high"
+        elif t >= 1.0:
+            return "elevated"
+        return "normal"
+
+    # === Enhanced Crowding Detection ===
+
+    def check_symbol_crowding(self, groups: list[AgentGroup]) -> list[RiskAlert]:
+        """Per-symbol crowding detection (ABIDES-inspired).
+
+        With 70 agents, strategy crowding on specific symbols is a real risk.
+        Detects when too many agents pile into the same symbol/direction.
+        """
+        alerts = []
+        self.symbol_crowding = {}
+
+        for group in groups:
+            for agent in group.agents:
+                if not agent.account or not agent.active:
+                    continue
+                for pos in agent.account.positions.values():
+                    if pos.symbol not in self.symbol_crowding:
+                        self.symbol_crowding[pos.symbol] = {"LONG": 0, "SHORT": 0}
+                    self.symbol_crowding[pos.symbol][pos.side.value] += 1
+
+        for symbol, counts in self.symbol_crowding.items():
+            total = counts["LONG"] + counts["SHORT"]
+            if total < 5:
+                continue
+            dominant_count = max(counts["LONG"], counts["SHORT"])
+            dominant_side = "LONG" if counts["LONG"] > counts["SHORT"] else "SHORT"
+            ratio = dominant_count / total
+
+            if ratio >= 0.90:
+                alerts.append(RiskAlert(
+                    level=RiskLevel.HIGH,
+                    agent_id=None,
+                    group_name="ALL",
+                    category="symbol_crowding",
+                    message=(
+                        f"CROWDING on {symbol}: {ratio:.0%} agents are {dominant_side} "
+                        f"({dominant_count}/{total}). Force diversification recommended."
+                    ),
+                    metric_value=ratio,
+                    threshold=0.90,
+                    action_taken="DIVERSIFICATION_ADVISED",
+                ))
+            elif ratio >= 0.80:
+                alerts.append(RiskAlert(
+                    level=RiskLevel.MEDIUM,
+                    agent_id=None,
+                    group_name="ALL",
+                    category="symbol_crowding",
+                    message=(
+                        f"Moderate crowding on {symbol}: {ratio:.0%} agents are "
+                        f"{dominant_side} ({dominant_count}/{total})."
+                    ),
+                    metric_value=ratio,
+                    threshold=0.80,
+                ))
+
+        return alerts

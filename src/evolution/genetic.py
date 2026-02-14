@@ -160,29 +160,53 @@ class GeneticEvolver:
     def _crossover_and_mutate(
         self, strategy1: BaseStrategy, strategy2: BaseStrategy
     ) -> BaseStrategy:
-        """Create a child strategy through crossover and mutation."""
-        # If both are same type, crossover parameters
+        """Create a child strategy through crossover and mutation.
+
+        Strategy-aware crossover (Chen & Navet, 2007):
+        - Same type → parameter crossover (blend/swap params)
+        - Same category → light mutation of the better parent
+        - Different category → heavy mutation only (no crossover)
+        This prevents nonsensical hybrids and preserves strategy coherence.
+        """
         if type(strategy1) is type(strategy2):
+            # Same exact strategy type → standard parameter crossover
             child = strategy1.clone()
             if random.random() < self.config.crossover_rate:
                 child_params = self._crossover_params(
                     strategy1.get_params(), strategy2.get_params()
                 )
                 child.set_params(child_params)
-        elif isinstance(strategy1, HybridStrategy) or isinstance(strategy2, HybridStrategy):
-            # For hybrids, clone the better one
-            child = strategy1.clone()
-        else:
-            # Different strategy types - create a hybrid
-            child = HybridStrategy(
-                [(strategy1.clone(), random.uniform(0.3, 0.7)),
-                 (strategy2.clone(), random.uniform(0.3, 0.7))],
-                {"confidence_threshold": random.uniform(0.5, 0.7)},
-            )
+            # Light mutation
+            if random.random() < self.config.mutation_rate:
+                self._mutate_params(child)
 
-        # Mutation
-        if random.random() < self.config.mutation_rate:
-            self._mutate_params(child)
+        elif (
+            hasattr(strategy1, 'category') and hasattr(strategy2, 'category')
+            and strategy1.category == strategy2.category
+        ):
+            # Same category but different type → clone better, light mutation
+            child = strategy1.clone()
+            if random.random() < self.config.mutation_rate:
+                self._mutate_params(child)
+
+        elif isinstance(strategy1, HybridStrategy) or isinstance(strategy2, HybridStrategy):
+            child = strategy1.clone()
+            if random.random() < self.config.mutation_rate:
+                self._mutate_params(child)
+        else:
+            # Different categories → heavy mutation only (no crossover)
+            # Pick one parent and apply aggressive mutation
+            child = random.choice([strategy1, strategy2]).clone()
+            heavy_strength = self.config.mutation_strength * 2.5
+            params = child.get_params()
+            for key, value in params.items():
+                if isinstance(value, float):
+                    delta = value * heavy_strength * random.uniform(-1, 1)
+                    params[key] = max(0.001, value + delta)
+                elif isinstance(value, int) and key not in ("max_history", "min_candles"):
+                    delta = max(1, int(value * heavy_strength))
+                    params[key] = max(1, value + random.randint(-delta, delta))
+            child.set_params(params)
 
         return child
 

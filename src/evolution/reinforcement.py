@@ -172,24 +172,38 @@ class SimpleQLearner:
         position_held: bool,
         was_liquidated: bool = False,
     ) -> float:
-        """Calculate reward for the RL agent.
+        """Calculate risk-adjusted reward (Sortino-inspired).
+
+        From TensorTrade research:
+        - Use asymmetric reward: losses penalized more than gains rewarded
+        - This prevents the RL agent from learning high-variance strategies
+        - Sortino ratio only penalizes downside volatility
 
         Reward design:
-        - PnL change is primary reward
+        - Positive PnL → reward scaled by 1.0x
+        - Negative PnL → penalty scaled by 1.5x (asymmetric)
         - Fee penalty discourages excessive trading
-        - Holding penalty prevents inaction
         - Liquidation is heavily penalized
+        - Drawdown-aware penalty
         """
-        reward = pnl_change * 100  # Scale PnL to meaningful range
+        # Asymmetric PnL reward (Sortino-inspired)
+        if pnl_change >= 0:
+            reward = pnl_change * 100
+        else:
+            reward = pnl_change * 150  # Losses hurt 1.5x more
 
         reward -= fee * 10  # Fee penalty
 
         if was_liquidated:
-            reward -= 50  # Heavy liquidation penalty
+            reward -= 100  # Heavy liquidation penalty (doubled)
 
         # Small penalty for holding with no position (opportunity cost)
         if action == RLAction.HOLD and not position_held:
             reward -= 0.01
+
+        # Bonus for profitable close (encourages taking profits)
+        if action == RLAction.CLOSE and pnl_change > 0:
+            reward += pnl_change * 30  # Extra bonus for taking profits
 
         self.total_rewards += reward
         return reward

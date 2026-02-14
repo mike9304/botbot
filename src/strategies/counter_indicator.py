@@ -168,31 +168,48 @@ class CounterIndicatorStrategy(BaseStrategy):
         return sorted(candidates, key=lambda t: t.accuracy)  # Worst first
 
     def generate_counter_signal(
-        self, source_agent_id: str, source_signal: TradeSignal
+        self, source_agent_id: str, source_signal: TradeSignal,
+        market_regime: str = "unknown",
     ) -> Optional[TradeSignal]:
-        """Generate an inverted signal if the source agent is a reliable loser."""
+        """Generate an inverted signal if the source agent is a reliable loser.
+
+        Regime-dependent inversion (Tzouvanas et al., 2020):
+        - Volatile market → invert more aggressively (contrarian works better)
+        - Trending market → invert less (momentum agents may be correct)
+        """
         tracker = self.tracked_agents.get(source_agent_id)
         if not tracker or not tracker.is_reliable_loser:
             return None
 
         inv_confidence = tracker.inversion_confidence
+
+        # Regime adjustment: contrarian strategies work better in volatile markets
+        regime_multiplier = {
+            "volatile": 1.15,    # More aggressive inversion
+            "ranging": 1.05,     # Slightly more
+            "trending_up": 0.85, # Less aggressive
+            "trending_down": 0.85,
+            "unknown": 1.0,
+        }.get(market_regime, 1.0)
+        inv_confidence *= regime_multiplier
+
         if inv_confidence < self.params["min_inversion_confidence"]:
             return None
 
-        # INVERT the signal
         inverted_side = Side.SHORT if source_signal.side == Side.LONG else Side.LONG
 
         return TradeSignal(
             symbol=source_signal.symbol,
             side=inverted_side,
-            confidence=inv_confidence,
+            confidence=min(inv_confidence, 0.95),
             strategy_name=self.name,
             leverage=self.params["leverage"],
             stop_loss_pct=self.params["stop_loss_pct"],
             take_profit_pct=self.params["take_profit_pct"],
             reason=(
                 f"COUNTER-INDICATOR: Inverted {tracker.agent_id} "
-                f"(accuracy={tracker.accuracy:.0%}, inverted→{inverted_side.value})"
+                f"(accuracy={tracker.accuracy:.0%}, regime={market_regime}, "
+                f"inverted→{inverted_side.value})"
             ),
         )
 
@@ -280,13 +297,24 @@ class StrategyTypeCounterIndicatorStrategy(BaseStrategy):
         tracker.pending_price = price
 
     def generate_counter_signal(
-        self, strategy_type: str, source_signal: TradeSignal
+        self, strategy_type: str, source_signal: TradeSignal,
+        market_regime: str = "unknown",
     ) -> Optional[TradeSignal]:
+        """Regime-dependent type-level inversion (Tzouvanas et al., 2020)."""
         tracker = self.type_trackers.get(strategy_type)
         if not tracker or not tracker.is_reliable_loser:
             return None
 
         inv_confidence = tracker.inversion_confidence
+
+        # Regime adjustment
+        regime_multiplier = {
+            "volatile": 1.15, "ranging": 1.05,
+            "trending_up": 0.85, "trending_down": 0.85,
+            "unknown": 1.0,
+        }.get(market_regime, 1.0)
+        inv_confidence *= regime_multiplier
+
         if inv_confidence < self.params["min_inversion_confidence"]:
             return None
 
@@ -295,14 +323,14 @@ class StrategyTypeCounterIndicatorStrategy(BaseStrategy):
         return TradeSignal(
             symbol=source_signal.symbol,
             side=inverted_side,
-            confidence=inv_confidence,
+            confidence=min(inv_confidence, 0.95),
             strategy_name=self.name,
             leverage=self.params["leverage"],
             stop_loss_pct=self.params["stop_loss_pct"],
             take_profit_pct=self.params["take_profit_pct"],
             reason=(
-                f"TYPE COUNTER: {strategy_type} type accuracy={tracker.accuracy:.0%} "
-                f"→ invert to {inverted_side.value}"
+                f"TYPE COUNTER: {strategy_type} accuracy={tracker.accuracy:.0%} "
+                f"regime={market_regime} → invert to {inverted_side.value}"
             ),
         )
 

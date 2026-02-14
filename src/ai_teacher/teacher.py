@@ -146,6 +146,7 @@ class AITeacher:
         self.llm_client = LLMClient(self.config.llm_config)
         self.reports: list[TeacherReport] = []
         self.evaluation_count = 0
+        self._current_regime = "unknown"
 
     async def evaluate_generation(
         self,
@@ -160,18 +161,20 @@ class AITeacher:
         self.evaluation_count += 1
         logger.info(f"AI Teacher: Evaluation #{self.evaluation_count} at candle {candle_index}")
 
-        # 1. Risk check
+        # 1. Detect market regime FIRST (needed for regime-relative grading)
+        market_regime = self._detect_market_regime(recent_candles)
+        self._current_regime = market_regime
+
+        # 2. Risk check (including turbulence + crowding)
         risk_alerts = self.risk_manager.check_all(groups)
+        risk_alerts.extend(self.risk_manager.check_symbol_crowding(groups))
         risk_summary = self.risk_manager.get_risk_summary()
 
-        # 2. Evaluate each group and agent
+        # 3. Evaluate each group and agent (regime-relative grading)
         group_reports = []
         for group in groups:
             report = self._evaluate_group(group)
             group_reports.append(report)
-
-        # 3. Detect market regime
-        market_regime = self._detect_market_regime(recent_candles)
 
         # 4. Generate evolution guidance
         evolution_guidance = self._generate_evolution_guidance(group_reports, market_regime)
@@ -256,8 +259,21 @@ class AITeacher:
         )
 
     def _evaluate_agent(self, agent: TradingAgent, group_name: str) -> AgentReportCard:
-        """Evaluate a single agent's performance."""
+        """Evaluate a single agent's performance with regime-relative grading.
+
+        From multiple papers: -2% in a crash ≠ -2% in a bull market.
+        Grades are adjusted based on the current market regime so agents
+        aren't unfairly penalized for conditions beyond their control.
+        """
         evaluation = self.risk_manager.evaluate_agent_performance(agent)
+
+        # Regime-relative grade adjustment
+        grade = evaluation["grade"]
+        grade = self._adjust_grade_for_regime(
+            grade, evaluation["pnl_pct"], agent.strategy.category
+            if hasattr(agent.strategy, 'category') else "unknown"
+        )
+        evaluation["grade"] = grade
 
         # Teacher comment based on grade
         comment = self._generate_agent_comment(
@@ -341,6 +357,57 @@ class AITeacher:
             comment += f" Issues: {'; '.join(weaknesses[:2])}"
 
         return comment
+
+    def _adjust_grade_for_regime(
+        self, grade: str, pnl_pct: float, strategy_category: str,
+    ) -> str:
+        """Adjust grade based on market regime (regime-relative grading).
+
+        From research: an agent losing 2% in a crash should be graded
+        differently than one losing 2% in a bull market.
+        Also: momentum agents are expected to do well in trends,
+        mean reversion in ranges — grade relative to expected performance.
+        """
+        regime = self._current_regime
+        grade_order = ["F-", "F", "D", "C", "B", "B+", "A", "A+"]
+
+        def shift_grade(g: str, steps: int) -> str:
+            try:
+                idx = grade_order.index(g)
+            except ValueError:
+                return g
+            new_idx = max(0, min(len(grade_order) - 1, idx + steps))
+            return grade_order[new_idx]
+
+        # Regime-based adjustment
+        if regime == "volatile":
+            # Volatile market: losing is expected, be lenient
+            if pnl_pct < 0 and pnl_pct > -10:
+                grade = shift_grade(grade, 1)  # Bump up one grade
+            # Contrarian strategies expected to shine
+            if strategy_category in ("contrarian", "counter_indicator", "sentiment_fade"):
+                if pnl_pct < 0:
+                    grade = shift_grade(grade, -1)  # Expect better from you
+
+        elif regime in ("trending_up", "trending_down"):
+            # Trending: momentum should do well, mean reversion should struggle
+            if strategy_category in ("momentum", "sentiment_follow"):
+                if pnl_pct < 0:
+                    grade = shift_grade(grade, -1)  # Should be winning
+            elif strategy_category in ("statistical", "regime"):
+                if pnl_pct < 0:
+                    grade = shift_grade(grade, 1)  # Expected to struggle
+
+        elif regime == "ranging":
+            # Range-bound: mean reversion expected to do well
+            if strategy_category in ("statistical",):
+                if pnl_pct < 0:
+                    grade = shift_grade(grade, -1)
+            elif strategy_category in ("momentum",):
+                if pnl_pct < 0:
+                    grade = shift_grade(grade, 1)
+
+        return grade
 
     def _suggest_parameters(self, agent: TradingAgent, evaluation: dict) -> dict:
         """Suggest parameter adjustments based on performance."""

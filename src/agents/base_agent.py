@@ -99,24 +99,32 @@ class TradingAgent:
 
     @property
     def fitness(self) -> float:
-        """Calculate fitness score for genetic evolution.
+        """Calculate fitness score using risk-adjusted returns (Sortino-like).
 
-        Fitness considers:
-        - Total PnL (primary)
-        - Win rate (secondary)
-        - Max drawdown (penalty)
-        - Sharpe-like ratio
+        Multi-regime aware fitness (Lohpetch & Corne, 2010):
+        - Uses Sortino ratio concept: penalize downside volatility only
+        - Rewards consistent positive PnL (not just total PnL)
+        - Drawdown penalty is quadratic (harsh on blowups)
+        - Trade frequency has diminishing returns
         """
         account = self.account
         if not account or account.total_trades == 0:
             return 0.0
 
         pnl_score = account.pnl_percent
-        win_rate_bonus = (account.win_rate - 0.5) * 20  # Bonus for >50% WR
-        drawdown_penalty = account.max_drawdown * 50  # Penalize drawdown
-        trade_frequency = min(account.total_trades / 10, 2.0)  # Reward active trading
 
-        return pnl_score + win_rate_bonus - drawdown_penalty + trade_frequency
+        # Sortino-inspired: only penalize downside — losses hurt more than gains help
+        win_rate_bonus = (account.win_rate - 0.5) * 20
+        downside_penalty = account.max_drawdown ** 2 * 200  # Quadratic drawdown penalty
+
+        # Consistency bonus: high win rate + low drawdown = reliable agent
+        consistency = 0.0
+        if account.win_rate > 0.5 and account.max_drawdown < 0.15:
+            consistency = (account.win_rate - 0.5) * (0.15 - account.max_drawdown) * 100
+
+        trade_frequency = min(account.total_trades / 10, 2.0)
+
+        return pnl_score + win_rate_bonus - downside_penalty + consistency + trade_frequency
 
 
 class AgentGroup:

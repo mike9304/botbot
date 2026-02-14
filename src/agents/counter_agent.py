@@ -41,6 +41,8 @@ class CounterIndicatorAgent(TradingAgent):
         self.counter_strategy: CounterIndicatorStrategy = config.strategy  # type: ignore
         self._observed_count = 0
         self._inverted_count = 0
+        self._feedback_loop_resets = 0
+        self._current_regime = "unknown"
 
     def on_other_agent_signal(
         self,
@@ -63,9 +65,9 @@ class CounterIndicatorAgent(TradingAgent):
             source_agent_id, source_strategy_name, signal, current_price
         )
 
-        # Check if we should invert this signal
+        # Check if we should invert this signal (regime-dependent)
         counter_signal = self.counter_strategy.generate_counter_signal(
-            source_agent_id, signal
+            source_agent_id, signal, market_regime=self._current_regime
         )
 
         if counter_signal and self._can_trade(self.account, counter_signal):
@@ -95,6 +97,28 @@ class CounterIndicatorAgent(TradingAgent):
         })
         return base
 
+    def set_market_regime(self, regime: str):
+        """Update current market regime for regime-dependent inversion."""
+        self._current_regime = regime
+
+    def on_agent_fired(self, fired_agent_id: str):
+        """Handle feedback loop when an inverted agent gets fired.
+
+        From Bao & Liu (2019): When counter-indicators succeed, the agents
+        they invert get replaced, erasing the counter-indicator's edge.
+        Halve the track record so the agent quickly re-learns from the replacement.
+        """
+        tracker = self.counter_strategy.tracked_agents.get(fired_agent_id)
+        if tracker:
+            logger.info(
+                f"FEEDBACK LOOP: {fired_agent_id} fired "
+                f"(was accuracy={tracker.accuracy:.0%}). Halving tracker."
+            )
+            tracker.correct_signals = tracker.correct_signals // 2
+            tracker.wrong_signals = tracker.wrong_signals // 2
+            tracker.pending_signal = None
+            self._feedback_loop_resets += 1
+
     def get_tracking_report(self) -> list[dict]:
         return self.counter_strategy.get_tracking_report()
 
@@ -114,6 +138,7 @@ class StrategyTypeCounterAgent(TradingAgent):
         self.type_counter: StrategyTypeCounterIndicatorStrategy = config.strategy  # type: ignore
         self._observed_count = 0
         self._inverted_count = 0
+        self._current_regime = "unknown"
 
     def on_strategy_type_signal(
         self,
@@ -132,7 +157,7 @@ class StrategyTypeCounterAgent(TradingAgent):
         )
 
         counter_signal = self.type_counter.generate_counter_signal(
-            strategy_type, signal
+            strategy_type, signal, market_regime=self._current_regime
         )
 
         if counter_signal and self._can_trade(self.account, counter_signal):
@@ -150,6 +175,9 @@ class StrategyTypeCounterAgent(TradingAgent):
         if not self.active:
             return
         self.candles_since_last_trade += 1
+
+    def set_market_regime(self, regime: str):
+        self._current_regime = regime
 
     def get_summary(self) -> dict:
         base = super().get_summary()
