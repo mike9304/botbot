@@ -63,8 +63,14 @@ async def fetch_historical_klines(
             candles.append(candle)
         return candles
 
-    except Exception as e:
-        logger.error(f"Error fetching klines: {e}")
+    except aiohttp.ClientError as e:
+        logger.error(f"Network error fetching klines for {symbol}: {e}")
+        return []
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout fetching klines for {symbol}")
+        return []
+    except (KeyError, IndexError, ValueError) as e:
+        logger.error(f"Error parsing kline data for {symbol}: {e}")
         return []
 
 

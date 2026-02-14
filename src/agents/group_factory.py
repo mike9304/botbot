@@ -59,6 +59,33 @@ DEFAULT_SYMBOLS = [
 ]
 
 
+def _build_agents_from_strategies(
+    group: AgentGroup,
+    group_key: str,
+    strategies: list[tuple[str, object]],
+    exchange: VirtualExchange,
+    *,
+    agent_cls: type = TradingAgent,
+    symbols: list[str] | None = None,
+    **config_overrides,
+) -> list:
+    """Helper to create agents from a list of (name, strategy) pairs and add to group.
+
+    Returns the created agents (useful for counter-indicator groups).
+    """
+    symbols = symbols or DEFAULT_SYMBOLS[:5]
+    agents = []
+    for name, strategy in strategies:
+        config = AgentConfig(
+            name=name, group=group_key, strategy=strategy,
+            symbols=symbols, **config_overrides,
+        )
+        agent = agent_cls(config, exchange)
+        group.add_agent(agent)
+        agents.append(agent)
+    return agents
+
+
 def create_all_groups(exchange: VirtualExchange) -> list[AgentGroup]:
     """Create all agent groups for the simulation."""
     groups = []
@@ -154,12 +181,7 @@ def _create_technical_group(exchange: VirtualExchange) -> AgentGroup:
         ("fibonacci_default", FibonacciRetracementStrategy()),
         ("vwap_default", VolumeProfileStrategy()),
     ]
-    for name, strategy in strategies:
-        agent = TradingAgent(
-            AgentConfig(name=name, group="technical", strategy=strategy, symbols=DEFAULT_SYMBOLS[:5]),
-            exchange,
-        )
-        group.add_agent(agent)
+    _build_agents_from_strategies(group, "technical", strategies, exchange)
     return group
 
 
@@ -175,12 +197,7 @@ def _create_momentum_group(exchange: VirtualExchange) -> AgentGroup:
         ("rsi_trend_default", RSITrendMomentumStrategy()),
         ("rsi_trend_tight", RSITrendMomentumStrategy({"uptrend_rsi_floor": 45, "downtrend_rsi_ceiling": 55})),
     ]
-    for name, strategy in strategies:
-        agent = TradingAgent(
-            AgentConfig(name=name, group="momentum", strategy=strategy, symbols=DEFAULT_SYMBOLS[:5]),
-            exchange,
-        )
-        group.add_agent(agent)
+    _build_agents_from_strategies(group, "momentum", strategies, exchange)
     return group
 
 
@@ -195,12 +212,7 @@ def _create_mean_reversion_group(exchange: VirtualExchange) -> AgentGroup:
         ("mr_tight", MeanReversionStrategy({"z_score_entry": 1.5, "lookback_period": 20})),
         ("mr_wide", MeanReversionStrategy({"z_score_entry": 2.5, "lookback_period": 50})),
     ]
-    for name, strategy in strategies:
-        agent = TradingAgent(
-            AgentConfig(name=name, group="mean_reversion", strategy=strategy, symbols=DEFAULT_SYMBOLS[:5]),
-            exchange,
-        )
-        group.add_agent(agent)
+    _build_agents_from_strategies(group, "mean_reversion", strategies, exchange)
     return group
 
 
@@ -216,12 +228,7 @@ def _create_orderflow_group(exchange: VirtualExchange) -> AgentGroup:
         ("smc_default", SmartMoneyConceptStrategy()),
         ("smc_tight", SmartMoneyConceptStrategy({"fvg_min_gap_pct": 0.002})),
     ]
-    for name, strategy in strategies:
-        agent = TradingAgent(
-            AgentConfig(name=name, group="orderflow", strategy=strategy, symbols=DEFAULT_SYMBOLS[:5]),
-            exchange,
-        )
-        group.add_agent(agent)
+    _build_agents_from_strategies(group, "orderflow", strategies, exchange)
     return group
 
 
@@ -236,12 +243,7 @@ def _create_regime_group(exchange: VirtualExchange) -> AgentGroup:
         ("regime_sensitive", MarketRegimeStrategy({"adx_trend_threshold": 20})),
         ("regime_strict", MarketRegimeStrategy({"adx_trend_threshold": 30})),
     ]
-    for name, strategy in strategies:
-        agent = TradingAgent(
-            AgentConfig(name=name, group="regime", strategy=strategy, symbols=DEFAULT_SYMBOLS[:5]),
-            exchange,
-        )
-        group.add_agent(agent)
+    _build_agents_from_strategies(group, "regime", strategies, exchange)
     return group
 
 
@@ -428,12 +430,7 @@ def _create_contrarian_group(exchange: VirtualExchange) -> AgentGroup:
             "range_threshold": 0.05, "spring_threshold": 0.003,
         })),
     ]
-    for name, strategy in strategies:
-        agent = TradingAgent(
-            AgentConfig(name=name, group="contrarian", strategy=strategy, symbols=DEFAULT_SYMBOLS[:5]),
-            exchange,
-        )
-        group.add_agent(agent)
+    _build_agents_from_strategies(group, "contrarian", strategies, exchange)
     return group
 
 
@@ -579,15 +576,7 @@ def _create_sentiment_follower_group(exchange: VirtualExchange) -> AgentGroup:
             "acceleration_threshold": 10, "min_sentiment_level": 15,
         })),
     ]
-    for name, strategy in strategies:
-        agent = TradingAgent(
-            AgentConfig(
-                name=name, group="sentiment_follow", strategy=strategy,
-                symbols=DEFAULT_SYMBOLS[:5],
-            ),
-            exchange,
-        )
-        group.add_agent(agent)
+    _build_agents_from_strategies(group, "sentiment_follow", strategies, exchange)
     return group
 
 
@@ -613,15 +602,7 @@ def _create_sentiment_contrarian_group(exchange: VirtualExchange) -> AgentGroup:
             "require_divergence": True,
         })),
     ]
-    for name, strategy in strategies:
-        agent = TradingAgent(
-            AgentConfig(
-                name=name, group="sentiment_fade", strategy=strategy,
-                symbols=DEFAULT_SYMBOLS[:5],
-            ),
-            exchange,
-        )
-        group.add_agent(agent)
+    _build_agents_from_strategies(group, "sentiment_fade", strategies, exchange)
     return group
 
 
@@ -655,15 +636,7 @@ def _create_proven_bots_group(exchange: VirtualExchange) -> AgentGroup:
         })),
         ("mtf_trend_default", MultiTimeframeTrendStrategy()),
     ]
-    for name, strategy in strategies:
-        agent = TradingAgent(
-            AgentConfig(
-                name=name, group="proven_bot", strategy=strategy,
-                symbols=DEFAULT_SYMBOLS[:5],
-            ),
-            exchange,
-        )
-        group.add_agent(agent)
+    _build_agents_from_strategies(group, "proven_bot", strategies, exchange)
     return group
 
 
@@ -687,15 +660,7 @@ def _create_loser_league_group(exchange: VirtualExchange) -> AgentGroup:
         ("loser_seed_rsi", RSIMACDStrategy({"rsi_overbought": 50, "rsi_oversold": 50})),
         ("loser_seed_mr", MeanReversionStrategy({"z_score_entry": 0.5, "lookback_period": 5})),
     ]
-    for name, strategy in bad_strategies:
-        agent = TradingAgent(
-            AgentConfig(
-                name=name, group="loser_league", strategy=strategy,
-                symbols=DEFAULT_SYMBOLS[:5],
-            ),
-            exchange,
-        )
-        group.add_agent(agent)
+    _build_agents_from_strategies(group, "loser_league", bad_strategies, exchange)
     return group
 
 

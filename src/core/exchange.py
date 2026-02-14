@@ -76,16 +76,17 @@ class VirtualExchange:
         self.current_prices: dict[str, float] = {}
         self.pending_orders: dict[str, list[Order]] = {}  # agent_id -> orders
 
-    def register_agent(self, agent_id: str, initial_balance: float = 10000.0):
+    def register_agent(self, agent_id: str, initial_balance: float = 10000.0) -> None:
         self.accounts[agent_id] = AccountState(
             balance=initial_balance,
             equity=initial_balance,
             available_margin=initial_balance,
+            initial_balance=initial_balance,
             peak_equity=initial_balance,
         )
         self.pending_orders[agent_id] = []
 
-    def update_price(self, symbol: str, candle: Candle):
+    def update_price(self, symbol: str, candle: Candle) -> None:
         self.current_prices[symbol] = candle.close
         self._check_liquidations(symbol, candle)
         self._process_pending_orders(symbol, candle)

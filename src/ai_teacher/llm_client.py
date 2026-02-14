@@ -27,12 +27,13 @@ Cost estimates (per million tokens, as of 2025):
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
+
+import aiohttp
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ class LLMConfig:
     max_calls_per_minute: int = 30
     max_cost_per_day_usd: float = 5.0  # Safety cap
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.model:
             self.model = DEFAULT_MODELS.get(self.provider, "")
         if not self.api_key:
@@ -105,6 +106,13 @@ TOKEN_COSTS: dict[str, tuple[float, float]] = {
     "llama-3.3-70b-versatile": (0.06, 0.06),
 }
 
+# OpenAI-compatible provider endpoints (DeepSeek, Groq use the same API format)
+_OPENAI_COMPATIBLE_ENDPOINTS: dict[LLMProvider, str] = {
+    LLMProvider.OPENAI: "https://api.openai.com/v1/chat/completions",
+    LLMProvider.DEEPSEEK: "https://api.deepseek.com/v1/chat/completions",
+    LLMProvider.GROQ: "https://api.groq.com/openai/v1/chat/completions",
+}
+
 
 @dataclass
 class LLMResponse:
@@ -128,7 +136,7 @@ class LLMClient:
         self.config = config or LLMConfig()
         self._call_count = 0
         self._daily_cost = 0.0
-        self._http_session = None
+        self._http_session: Optional[aiohttp.ClientSession] = None
 
     async def chat(self, prompt: str, system: str = "") -> LLMResponse:
         """Send a chat message to the configured LLM provider."""
@@ -146,17 +154,21 @@ class LLMClient:
                 model="offline", provider="offline",
             )
 
+        # API key validation
+        if not self.config.api_key:
+            logger.warning(f"No API key for {self.config.provider.value}, falling back to offline.")
+            return LLMResponse(
+                content="[NO API KEY - OFFLINE MODE]",
+                model="offline", provider="offline",
+            )
+
         try:
             if self.config.provider == LLMProvider.ANTHROPIC:
                 response = await self._call_anthropic(prompt, system)
-            elif self.config.provider == LLMProvider.OPENAI:
-                response = await self._call_openai(prompt, system)
             elif self.config.provider == LLMProvider.GOOGLE:
                 response = await self._call_google(prompt, system)
-            elif self.config.provider == LLMProvider.DEEPSEEK:
-                response = await self._call_deepseek(prompt, system)
-            elif self.config.provider == LLMProvider.GROQ:
-                response = await self._call_groq(prompt, system)
+            elif self.config.provider in _OPENAI_COMPATIBLE_ENDPOINTS:
+                response = await self._call_openai_compatible(prompt, system)
             else:
                 return LLMResponse(content="[UNKNOWN PROVIDER]")
 
@@ -164,13 +176,21 @@ class LLMClient:
             self._update_costs(response)
             return response
 
-        except Exception as e:
-            logger.error(f"LLM call failed ({self.config.provider}): {e}")
-            return LLMResponse(content=f"[ERROR: {e}]", model=self.config.model)
+        except aiohttp.ClientError as e:
+            logger.error(f"Network error calling {self.config.provider}: {e}")
+            return LLMResponse(content=f"[NETWORK ERROR: {e}]", model=self.config.model)
+        except TimeoutError as e:
+            logger.error(f"Timeout calling {self.config.provider}: {e}")
+            return LLMResponse(content=f"[TIMEOUT ERROR: {e}]", model=self.config.model)
+        except (KeyError, IndexError) as e:
+            logger.error(f"Unexpected API response from {self.config.provider}: {e}")
+            return LLMResponse(content=f"[PARSE ERROR: {e}]", model=self.config.model)
+        except RuntimeError as e:
+            logger.error(f"API error from {self.config.provider}: {e}")
+            return LLMResponse(content=f"[API ERROR: {e}]", model=self.config.model)
 
-    async def _get_session(self):
-        if self._http_session is None:
-            import aiohttp
+    async def _get_session(self) -> aiohttp.ClientSession:
+        if self._http_session is None or self._http_session.closed:
             self._http_session = aiohttp.ClientSession()
         return self._http_session
 
@@ -195,7 +215,7 @@ class LLMClient:
             "https://api.anthropic.com/v1/messages",
             headers=headers,
             json=payload,
-            timeout=self.config.timeout,
+            timeout=aiohttp.ClientTimeout(total=self.config.timeout),
         ) as resp:
             data = await resp.json()
             if resp.status != 200:
@@ -208,8 +228,11 @@ class LLMClient:
                 provider="anthropic",
             )
 
-    async def _call_openai(self, prompt: str, system: str) -> LLMResponse:
-        """Call OpenAI API."""
+    async def _call_openai_compatible(self, prompt: str, system: str) -> LLMResponse:
+        """Call any OpenAI-compatible API (OpenAI, DeepSeek, Groq)."""
+        endpoint = _OPENAI_COMPATIBLE_ENDPOINTS[self.config.provider]
+        provider_name = self.config.provider.value
+
         session = await self._get_session()
         headers = {
             "Authorization": f"Bearer {self.config.api_key}",
@@ -228,56 +251,20 @@ class LLMClient:
         }
 
         async with session.post(
-            "https://api.openai.com/v1/chat/completions",
+            endpoint,
             headers=headers,
             json=payload,
-            timeout=self.config.timeout,
+            timeout=aiohttp.ClientTimeout(total=self.config.timeout),
         ) as resp:
             data = await resp.json()
             if resp.status != 200:
-                raise RuntimeError(f"OpenAI API error {resp.status}: {data}")
-            return LLMResponse(
-                content=data["choices"][0]["message"]["content"],
-                input_tokens=data["usage"]["prompt_tokens"],
-                output_tokens=data["usage"]["completion_tokens"],
-                model=self.config.model,
-                provider="openai",
-            )
-
-    async def _call_deepseek(self, prompt: str, system: str) -> LLMResponse:
-        """Call DeepSeek API (OpenAI-compatible endpoint)."""
-        session = await self._get_session()
-        headers = {
-            "Authorization": f"Bearer {self.config.api_key}",
-            "Content-Type": "application/json",
-        }
-        messages = []
-        if system:
-            messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": prompt})
-
-        payload = {
-            "model": self.config.model,
-            "messages": messages,
-            "max_tokens": self.config.max_tokens,
-            "temperature": self.config.temperature,
-        }
-
-        async with session.post(
-            "https://api.deepseek.com/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=self.config.timeout,
-        ) as resp:
-            data = await resp.json()
-            if resp.status != 200:
-                raise RuntimeError(f"DeepSeek API error {resp.status}: {data}")
+                raise RuntimeError(f"{provider_name} API error {resp.status}: {data}")
             return LLMResponse(
                 content=data["choices"][0]["message"]["content"],
                 input_tokens=data["usage"].get("prompt_tokens", 0),
                 output_tokens=data["usage"].get("completion_tokens", 0),
                 model=self.config.model,
-                provider="deepseek",
+                provider=provider_name,
             )
 
     async def _call_google(self, prompt: str, system: str) -> LLMResponse:
@@ -297,7 +284,10 @@ class LLMClient:
         if system:
             payload["systemInstruction"] = {"parts": [{"text": system}]}
 
-        async with session.post(url, json=payload, timeout=self.config.timeout) as resp:
+        async with session.post(
+            url, json=payload,
+            timeout=aiohttp.ClientTimeout(total=self.config.timeout),
+        ) as resp:
             data = await resp.json()
             if resp.status != 200:
                 raise RuntimeError(f"Gemini API error {resp.status}: {data}")
@@ -311,43 +301,7 @@ class LLMClient:
                 provider="google",
             )
 
-    async def _call_groq(self, prompt: str, system: str) -> LLMResponse:
-        """Call Groq API (OpenAI-compatible, ultrafast inference)."""
-        session = await self._get_session()
-        headers = {
-            "Authorization": f"Bearer {self.config.api_key}",
-            "Content-Type": "application/json",
-        }
-        messages = []
-        if system:
-            messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": prompt})
-
-        payload = {
-            "model": self.config.model,
-            "messages": messages,
-            "max_tokens": self.config.max_tokens,
-            "temperature": self.config.temperature,
-        }
-
-        async with session.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=self.config.timeout,
-        ) as resp:
-            data = await resp.json()
-            if resp.status != 200:
-                raise RuntimeError(f"Groq API error {resp.status}: {data}")
-            return LLMResponse(
-                content=data["choices"][0]["message"]["content"],
-                input_tokens=data["usage"].get("prompt_tokens", 0),
-                output_tokens=data["usage"].get("completion_tokens", 0),
-                model=self.config.model,
-                provider="groq",
-            )
-
-    def _update_costs(self, response: LLMResponse):
+    def _update_costs(self, response: LLMResponse) -> None:
         """Track token usage and costs."""
         costs = TOKEN_COSTS.get(response.model, (0, 0))
         input_cost = response.input_tokens * costs[0] / 1_000_000
@@ -373,7 +327,7 @@ class LLMClient:
             "daily_limit_usd": self.config.max_cost_per_day_usd,
         }
 
-    async def close(self):
-        if self._http_session:
+    async def close(self) -> None:
+        if self._http_session and not self._http_session.closed:
             await self._http_session.close()
             self._http_session = None

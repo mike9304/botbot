@@ -83,7 +83,7 @@ class TradingAgent:
             return False
         return True
 
-    def reset_daily_counter(self):
+    def reset_daily_counter(self) -> None:
         self.daily_trades = 0
 
     def get_summary(self) -> dict:
@@ -136,7 +136,7 @@ class AgentGroup:
         self.category = category
         self.agents: list[TradingAgent] = []
 
-    def add_agent(self, agent: TradingAgent):
+    def add_agent(self, agent: TradingAgent) -> None:
         self.agents.append(agent)
 
     def on_candle(self, candle: Candle) -> list[tuple[TradingAgent, TradeSignal]]:
@@ -148,7 +148,7 @@ class AgentGroup:
                 signals.append((agent, signal))
         return signals
 
-    def reset_daily_counters(self):
+    def reset_daily_counters(self) -> None:
         for agent in self.agents:
             agent.reset_daily_counter()
 

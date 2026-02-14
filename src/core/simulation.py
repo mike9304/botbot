@@ -101,7 +101,7 @@ class SimulationEngine:
         self.teacher = AITeacher(teacher_config)
         logger.info(f"AI Teacher initialized: provider={provider.value}")
 
-    def setup(self):
+    def setup(self) -> None:
         """Initialize the simulation."""
         logger.info("Setting up simulation...")
 
@@ -409,7 +409,7 @@ class SimulationEngine:
         self.subscribers.append(queue)
         return queue
 
-    def unsubscribe(self, queue: asyncio.Queue):
+    def unsubscribe(self, queue: asyncio.Queue) -> None:
         if queue in self.subscribers:
             self.subscribers.remove(queue)
 
@@ -422,5 +422,5 @@ class SimulationEngine:
             except asyncio.QueueFull:
                 pass
 
-    def stop(self):
+    def stop(self) -> None:
         self.running = False

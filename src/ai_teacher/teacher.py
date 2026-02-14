@@ -29,8 +29,11 @@ from __future__ import annotations
 
 import json
 import logging
+import random
 from dataclasses import dataclass, field
 from typing import Optional
+
+import numpy as np
 
 from src.agents.base_agent import AgentGroup, TradingAgent
 from src.core.models import Candle
@@ -349,7 +352,6 @@ class AITeacher:
                     f"{name}: Consider moving to the Loser League for inversion.",
                 ]
 
-        import random
         comment = random.choice(comments)
 
         # Add specific feedback
@@ -521,7 +523,6 @@ class AITeacher:
         if len(closes) < 20:
             return "unknown"
 
-        import numpy as np
         returns = np.diff(closes) / closes[:-1]
 
         trend = (closes[-1] - closes[0]) / closes[0]

@@ -47,6 +47,12 @@ class Candle:
     symbol: str = "BTCUSDT"
     timeframe: TimeFrame = TimeFrame.M1
 
+    def __post_init__(self) -> None:
+        if self.high < self.low:
+            self.high, self.low = self.low, self.high
+        if self.volume < 0:
+            self.volume = 0.0
+
     @property
     def mid(self) -> float:
         return (self.high + self.low) / 2
@@ -83,6 +89,12 @@ class Position:
     margin: float = 0.0
     timestamp: float = field(default_factory=time.time)
 
+    def __post_init__(self) -> None:
+        if self.quantity < 0:
+            self.quantity = 0.0
+        if self.leverage < 1:
+            self.leverage = 1
+
     def calculate_pnl(self, current_price: float) -> float:
         if self.side == Side.LONG:
             self.unrealized_pnl = (current_price - self.entry_price) * self.quantity
@@ -104,6 +116,7 @@ class AccountState:
     balance: float = 10000.0  # Starting USDT balance
     equity: float = 10000.0
     available_margin: float = 10000.0
+    initial_balance: float = 10000.0
     total_pnl: float = 0.0
     total_fees: float = 0.0
     win_count: int = 0
@@ -122,9 +135,11 @@ class AccountState:
 
     @property
     def pnl_percent(self) -> float:
-        return (self.total_pnl / 10000.0) * 100
+        if self.initial_balance <= 0:
+            return 0.0
+        return (self.total_pnl / self.initial_balance) * 100
 
-    def update_drawdown(self):
+    def update_drawdown(self) -> None:
         if self.equity > self.peak_equity:
             self.peak_equity = self.equity
         current_dd = (self.peak_equity - self.equity) / self.peak_equity

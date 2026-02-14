@@ -24,6 +24,8 @@ class BaseStrategy(ABC):
         self.params = defaults
         self.candle_history: list[Candle] = []
         self.signals_generated: int = 0
+        self._cached_df: Optional[pd.DataFrame] = None
+        self._cached_df_len: int = 0
 
     @abstractmethod
     def default_params(self) -> dict:
@@ -49,7 +51,14 @@ class BaseStrategy(ABC):
         return signal
 
     def to_dataframe(self, candles: list[Candle]) -> pd.DataFrame:
-        """Convert candle list to DataFrame for easier analysis."""
+        """Convert candle list to DataFrame for easier analysis.
+
+        Uses simple length-based cache to avoid recreating the full DataFrame
+        on every analyze() call when the candle list has not changed.
+        """
+        n = len(candles)
+        if self._cached_df is not None and self._cached_df_len == n:
+            return self._cached_df
         data = {
             "timestamp": [c.timestamp for c in candles],
             "open": [c.open for c in candles],
@@ -58,12 +67,14 @@ class BaseStrategy(ABC):
             "close": [c.close for c in candles],
             "volume": [c.volume for c in candles],
         }
-        return pd.DataFrame(data)
+        self._cached_df = pd.DataFrame(data)
+        self._cached_df_len = n
+        return self._cached_df
 
     def get_params(self) -> dict:
         return self.params.copy()
 
-    def set_params(self, params: dict):
+    def set_params(self, params: dict) -> None:
         self.params.update(params)
 
     def clone(self) -> BaseStrategy:
