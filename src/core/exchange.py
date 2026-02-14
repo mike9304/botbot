@@ -43,6 +43,9 @@ class BinanceFeeModel:
 class VirtualExchange:
     """Simulates a Binance-like futures exchange with realistic fee model."""
 
+    # Cap order history per agent to prevent unbounded memory growth.
+    MAX_ORDER_HISTORY = 200
+
     # Maximum leverage per symbol (simplified)
     MAX_LEVERAGE = {
         "BTCUSDT": 125,
@@ -92,7 +95,9 @@ class VirtualExchange:
         self._process_pending_orders(symbol, candle)
         self._update_all_equity()
 
-    def execute_signal(self, agent_id: str, signal: TradeSignal) -> Optional[Order]:
+    def execute_signal(
+        self, agent_id: str, signal: TradeSignal, risk_per_trade: float = 0.02,
+    ) -> Optional[Order]:
         account = self.accounts.get(agent_id)
         if not account:
             logger.warning(f"Agent {agent_id} not registered")
@@ -117,8 +122,8 @@ class VirtualExchange:
         max_leverage = self.MAX_LEVERAGE.get(signal.symbol, 20)
         leverage = min(signal.leverage, max_leverage)
 
-        # Risk 2% of equity per trade (position sizing)
-        risk_amount = account.equity * 0.02
+        # Risk per trade: uses agent-configured percentage (default 2%)
+        risk_amount = account.equity * risk_per_trade
         notional_value = risk_amount * leverage
         quantity = notional_value / current_price
         margin_required = notional_value / leverage
@@ -247,6 +252,8 @@ class VirtualExchange:
 
         account.available_margin += position.margin
         account.order_history.append(order)
+        if len(account.order_history) > self.MAX_ORDER_HISTORY:
+            account.order_history = account.order_history[-self.MAX_ORDER_HISTORY:]
         del account.positions[symbol]
 
         # Cancel related pending orders

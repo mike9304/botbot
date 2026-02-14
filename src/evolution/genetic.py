@@ -180,10 +180,7 @@ class GeneticEvolver:
             if random.random() < self.config.mutation_rate:
                 self._mutate_params(child)
 
-        elif (
-            hasattr(strategy1, 'category') and hasattr(strategy2, 'category')
-            and strategy1.category == strategy2.category
-        ):
+        elif strategy1.category == strategy2.category:
             # Same category but different type → clone better, light mutation
             child = strategy1.clone()
             if random.random() < self.config.mutation_rate:

@@ -247,54 +247,62 @@ def _create_regime_group(exchange: VirtualExchange) -> AgentGroup:
     return group
 
 
+def _build_hybrid_group(
+    exchange: VirtualExchange,
+    name: str,
+    description: str,
+    group_key: str,
+    combos: list[tuple[str, list[tuple]]],
+    confidence_threshold: float = 0.55,
+    **config_overrides,
+) -> AgentGroup:
+    """Data-driven helper for creating hybrid strategy groups.
+
+    Eliminates boilerplate: each hybrid group is just data (combos + thresholds).
+    """
+    group = AgentGroup(name=name, description=description, category="hybrid")
+    for agent_name, strats in combos:
+        hybrid = HybridStrategy(strats, {"confidence_threshold": confidence_threshold})
+        config = AgentConfig(
+            name=agent_name, group=group_key, strategy=hybrid,
+            symbols=DEFAULT_SYMBOLS[:5], **config_overrides,
+        )
+        group.add_agent(TradingAgent(config, exchange))
+    return group
+
+
 def _create_hybrid_tech_momentum(exchange: VirtualExchange) -> AgentGroup:
-    group = AgentGroup(
+    return _build_hybrid_group(exchange,
         name="Tech-Momentum Hybrids",
         description="Combination of technical analysis + momentum strategies",
-        category="hybrid",
+        group_key="hybrid_tech_mom",
+        combos=[
+            ("rsi_macd+momentum", [(RSIMACDStrategy(), 0.5), (MomentumBreakoutStrategy(), 0.5)]),
+            ("bollinger+rsi_trend", [(BollingerBreakoutStrategy(), 0.6), (RSITrendMomentumStrategy(), 0.4)]),
+            ("ema+momentum+vwap", [
+                (EMATripleCrossStrategy(), 0.4),
+                (MomentumBreakoutStrategy(), 0.3),
+                (VolumeProfileStrategy(), 0.3),
+            ]),
+        ],
     )
-    combos = [
-        ("rsi_macd+momentum", [(RSIMACDStrategy(), 0.5), (MomentumBreakoutStrategy(), 0.5)]),
-        ("bollinger+rsi_trend", [(BollingerBreakoutStrategy(), 0.6), (RSITrendMomentumStrategy(), 0.4)]),
-        ("ema+momentum+vwap", [
-            (EMATripleCrossStrategy(), 0.4),
-            (MomentumBreakoutStrategy(), 0.3),
-            (VolumeProfileStrategy(), 0.3),
-        ]),
-    ]
-    for name, strats in combos:
-        hybrid = HybridStrategy(strats, {"confidence_threshold": 0.55})
-        agent = TradingAgent(
-            AgentConfig(name=name, group="hybrid_tech_mom", strategy=hybrid, symbols=DEFAULT_SYMBOLS[:5]),
-            exchange,
-        )
-        group.add_agent(agent)
-    return group
 
 
 def _create_hybrid_orderflow_tech(exchange: VirtualExchange) -> AgentGroup:
-    group = AgentGroup(
+    return _build_hybrid_group(exchange,
         name="OrderFlow-Tech Hybrids",
         description="Smart Money + Technical analysis combination",
-        category="hybrid",
+        group_key="hybrid_of_tech",
+        combos=[
+            ("smc+rsi_macd", [(SmartMoneyConceptStrategy(), 0.6), (RSIMACDStrategy(), 0.4)]),
+            ("orderflow+bollinger", [(OrderFlowImbalanceStrategy(), 0.5), (BollingerBreakoutStrategy(), 0.5)]),
+            ("smc+fib+vwap", [
+                (SmartMoneyConceptStrategy(), 0.4),
+                (FibonacciRetracementStrategy(), 0.3),
+                (VolumeProfileStrategy(), 0.3),
+            ]),
+        ],
     )
-    combos = [
-        ("smc+rsi_macd", [(SmartMoneyConceptStrategy(), 0.6), (RSIMACDStrategy(), 0.4)]),
-        ("orderflow+bollinger", [(OrderFlowImbalanceStrategy(), 0.5), (BollingerBreakoutStrategy(), 0.5)]),
-        ("smc+fib+vwap", [
-            (SmartMoneyConceptStrategy(), 0.4),
-            (FibonacciRetracementStrategy(), 0.3),
-            (VolumeProfileStrategy(), 0.3),
-        ]),
-    ]
-    for name, strats in combos:
-        hybrid = HybridStrategy(strats, {"confidence_threshold": 0.55})
-        agent = TradingAgent(
-            AgentConfig(name=name, group="hybrid_of_tech", strategy=hybrid, symbols=DEFAULT_SYMBOLS[:5]),
-            exchange,
-        )
-        group.add_agent(agent)
-    return group
 
 
 def _create_hybrid_ensemble(exchange: VirtualExchange) -> AgentGroup:
@@ -321,81 +329,51 @@ def _create_hybrid_ensemble(exchange: VirtualExchange) -> AgentGroup:
         (MarketRegimeStrategy(), 1.5),
         (VolumeProfileStrategy(), 1.0),
     ]
-    agent1 = TradingAgent(
-        AgentConfig(
-            name="equal_ensemble",
-            group="ensemble",
-            strategy=HybridStrategy(all_strats_equal, {"confidence_threshold": 0.5}),
+    for name, strats in [("equal_ensemble", all_strats_equal), ("weighted_ensemble", all_strats_weighted)]:
+        config = AgentConfig(
+            name=name, group="ensemble",
+            strategy=HybridStrategy(strats, {"confidence_threshold": 0.5}),
             symbols=DEFAULT_SYMBOLS[:5],
-        ),
-        exchange,
-    )
-    agent2 = TradingAgent(
-        AgentConfig(
-            name="weighted_ensemble",
-            group="ensemble",
-            strategy=HybridStrategy(all_strats_weighted, {"confidence_threshold": 0.5}),
-            symbols=DEFAULT_SYMBOLS[:5],
-        ),
-        exchange,
-    )
-    group.add_agent(agent1)
-    group.add_agent(agent2)
+        )
+        group.add_agent(TradingAgent(config, exchange))
     return group
 
 
 def _create_hybrid_conservative(exchange: VirtualExchange) -> AgentGroup:
-    group = AgentGroup(
+    return _build_hybrid_group(exchange,
         name="Conservative Hybrids",
         description="Low-risk combination: mean reversion + regime detection",
-        category="hybrid",
+        group_key="hybrid_conservative",
+        confidence_threshold=0.65,
+        max_daily_trades=5,
+        combos=[
+            ("mr+regime", [(MeanReversionStrategy(), 0.5), (MarketRegimeStrategy(), 0.5)]),
+            ("mr+vwap+fib", [
+                (MeanReversionStrategy(), 0.4),
+                (VolumeProfileStrategy(), 0.3),
+                (FibonacciRetracementStrategy(), 0.3),
+            ]),
+        ],
     )
-    combos = [
-        ("mr+regime", [(MeanReversionStrategy(), 0.5), (MarketRegimeStrategy(), 0.5)]),
-        ("mr+vwap+fib", [
-            (MeanReversionStrategy(), 0.4),
-            (VolumeProfileStrategy(), 0.3),
-            (FibonacciRetracementStrategy(), 0.3),
-        ]),
-    ]
-    for name, strats in combos:
-        hybrid = HybridStrategy(strats, {"confidence_threshold": 0.65})
-        agent = TradingAgent(
-            AgentConfig(
-                name=name, group="hybrid_conservative", strategy=hybrid,
-                symbols=DEFAULT_SYMBOLS[:5], max_daily_trades=5,
-            ),
-            exchange,
-        )
-        group.add_agent(agent)
-    return group
 
 
 def _create_hybrid_aggressive(exchange: VirtualExchange) -> AgentGroup:
-    group = AgentGroup(
+    return _build_hybrid_group(exchange,
         name="Aggressive Hybrids",
         description="High-risk combination: momentum + SMC with higher leverage",
-        category="hybrid",
+        group_key="hybrid_aggressive",
+        confidence_threshold=0.5,
+        max_daily_trades=15,
+        risk_per_trade=0.03,
+        combos=[
+            ("momentum+smc", [(MomentumBreakoutStrategy(), 0.5), (SmartMoneyConceptStrategy(), 0.5)]),
+            ("momentum+rsi_trend+orderflow", [
+                (MomentumBreakoutStrategy(), 0.4),
+                (RSITrendMomentumStrategy(), 0.3),
+                (OrderFlowImbalanceStrategy(), 0.3),
+            ]),
+        ],
     )
-    combos = [
-        ("momentum+smc", [(MomentumBreakoutStrategy(), 0.5), (SmartMoneyConceptStrategy(), 0.5)]),
-        ("momentum+rsi_trend+orderflow", [
-            (MomentumBreakoutStrategy(), 0.4),
-            (RSITrendMomentumStrategy(), 0.3),
-            (OrderFlowImbalanceStrategy(), 0.3),
-        ]),
-    ]
-    for name, strats in combos:
-        hybrid = HybridStrategy(strats, {"confidence_threshold": 0.5})
-        agent = TradingAgent(
-            AgentConfig(
-                name=name, group="hybrid_aggressive", strategy=hybrid,
-                symbols=DEFAULT_SYMBOLS[:5], max_daily_trades=15, risk_per_trade=0.03,
-            ),
-            exchange,
-        )
-        group.add_agent(agent)
-    return group
 
 
 # === CONTRARIAN / PSYCHOLOGY GROUPS ===
@@ -439,41 +417,30 @@ def _create_hybrid_contrarian_tech(exchange: VirtualExchange) -> AgentGroup:
 
     Combine contrarian signals with technical confirmation for higher confidence.
     """
-    group = AgentGroup(
+    return _build_hybrid_group(exchange,
         name="Contrarian-Tech Hybrids",
         description="Contrarian psychology combined with technical confirmation",
-        category="hybrid",
+        group_key="hybrid_contrarian",
+        combos=[
+            ("fear_greed+rsi_macd", [
+                (FearGreedContrarianStrategy(), 0.6),
+                (RSIMACDStrategy(), 0.4),
+            ]),
+            ("retail_fader+bollinger", [
+                (RetailSentimentFaderStrategy(), 0.5),
+                (BollingerBreakoutStrategy(), 0.5),
+            ]),
+            ("wyckoff+smc", [
+                (WyckoffPsychologyStrategy(), 0.5),
+                (SmartMoneyConceptStrategy(), 0.5),
+            ]),
+            ("funding+regime+vwap", [
+                (FundingRateContrarianStrategy(), 0.4),
+                (MarketRegimeStrategy(), 0.3),
+                (VolumeProfileStrategy(), 0.3),
+            ]),
+        ],
     )
-    combos = [
-        ("fear_greed+rsi_macd", [
-            (FearGreedContrarianStrategy(), 0.6),
-            (RSIMACDStrategy(), 0.4),
-        ]),
-        ("retail_fader+bollinger", [
-            (RetailSentimentFaderStrategy(), 0.5),
-            (BollingerBreakoutStrategy(), 0.5),
-        ]),
-        ("wyckoff+smc", [
-            (WyckoffPsychologyStrategy(), 0.5),
-            (SmartMoneyConceptStrategy(), 0.5),
-        ]),
-        ("funding+regime+vwap", [
-            (FundingRateContrarianStrategy(), 0.4),
-            (MarketRegimeStrategy(), 0.3),
-            (VolumeProfileStrategy(), 0.3),
-        ]),
-    ]
-    for name, strats in combos:
-        hybrid = HybridStrategy(strats, {"confidence_threshold": 0.55})
-        agent = TradingAgent(
-            AgentConfig(
-                name=name, group="hybrid_contrarian", strategy=hybrid,
-                symbols=DEFAULT_SYMBOLS[:5],
-            ),
-            exchange,
-        )
-        group.add_agent(agent)
-    return group
 
 
 def _create_counter_indicator_group(

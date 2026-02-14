@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -33,21 +32,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global simulation state
-simulation: Optional[SimulationEngine] = None
-simulation_task: Optional[asyncio.Task] = None
+# Simulation state managed via app.state instead of module-level globals.
+# This avoids mutable module state and makes the API testable / multi-instance safe.
+app.state.simulation = None
+app.state.simulation_task = None
+
+
+def _get_sim() -> Optional[SimulationEngine]:
+    """Access the current simulation from app state."""
+    return app.state.simulation
 
 
 @app.get("/api/status")
 async def get_status():
-    if simulation is None:
+    sim = _get_sim()
+    if sim is None:
         return {"status": "idle", "message": "No simulation running"}
     return {
-        "status": "running" if simulation.running else "stopped",
-        "candle_index": simulation.current_candle_idx,
-        "total_candles": simulation.config.n_candles,
-        "groups": len(simulation.groups),
-        "total_agents": sum(len(g.agents) for g in simulation.groups),
+        "status": "running" if sim.running else "stopped",
+        "candle_index": sim.current_candle_idx,
+        "total_candles": sim.config.n_candles,
+        "groups": len(sim.groups),
+        "total_agents": sum(len(g.agents) for g in sim.groups),
     }
 
 
@@ -57,9 +63,8 @@ async def start_simulation(
     speed: float = 10.0,
     symbols: str = "BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT",
 ):
-    global simulation, simulation_task
-
-    if simulation and simulation.running:
+    sim = _get_sim()
+    if sim and sim.running:
         return {"error": "Simulation already running"}
 
     symbol_list = [s.strip() for s in symbols.split(",")]
@@ -68,8 +73,8 @@ async def start_simulation(
         n_candles=n_candles,
         speed_multiplier=speed,
     )
-    simulation = SimulationEngine(config)
-    simulation_task = asyncio.create_task(simulation.run())
+    app.state.simulation = SimulationEngine(config)
+    app.state.simulation_task = asyncio.create_task(app.state.simulation.run())
 
     return {"status": "started", "config": {
         "symbols": symbol_list,
@@ -80,20 +85,21 @@ async def start_simulation(
 
 @app.post("/api/simulation/stop")
 async def stop_simulation():
-    global simulation
-    if simulation:
-        simulation.stop()
+    sim = _get_sim()
+    if sim:
+        sim.stop()
         return {"status": "stopped"}
     return {"error": "No simulation running"}
 
 
 @app.get("/api/leaderboard")
 async def get_leaderboard():
-    if not simulation:
+    sim = _get_sim()
+    if not sim:
         return {"error": "No simulation running"}
 
     all_agents = []
-    for group in simulation.groups:
+    for group in sim.groups:
         for agent in group.agents:
             summary = agent.get_summary()
             summary["fitness"] = round(agent.fitness, 2)
@@ -105,11 +111,12 @@ async def get_leaderboard():
 
 @app.get("/api/groups")
 async def get_groups():
-    if not simulation:
+    sim = _get_sim()
+    if not sim:
         return {"error": "No simulation running"}
 
     groups = []
-    for group in simulation.groups:
+    for group in sim.groups:
         groups.append({
             "name": group.name,
             "category": group.category,
@@ -124,12 +131,13 @@ async def get_groups():
 
 @app.get("/api/groups/{group_index}")
 async def get_group_detail(group_index: int):
-    if not simulation:
-        return {"error": "No simulation running"}
-    if group_index >= len(simulation.groups):
+    sim = _get_sim()
+    if not sim:
+        return {"error": "Group not found"}
+    if group_index >= len(sim.groups):
         return {"error": "Group not found"}
 
-    group = simulation.groups[group_index]
+    group = sim.groups[group_index]
     return {
         "name": group.name,
         "category": group.category,
@@ -140,19 +148,21 @@ async def get_group_detail(group_index: int):
 
 @app.get("/api/evolution")
 async def get_evolution_history():
-    if not simulation:
+    sim = _get_sim()
+    if not sim:
         return {"error": "No simulation running"}
     return {
-        "generation": simulation.evolver.generation,
-        "history": [r.to_dict() for r in simulation.evolver.history],
+        "generation": sim.evolver.generation,
+        "history": [r.to_dict() for r in sim.evolver.history],
     }
 
 
 @app.get("/api/prices")
 async def get_current_prices():
-    if not simulation:
+    sim = _get_sim()
+    if not sim:
         return {"error": "No simulation running"}
-    return {"prices": {s: round(p, 2) for s, p in simulation.exchange.current_prices.items()}}
+    return {"prices": {s: round(p, 2) for s, p in sim.exchange.current_prices.items()}}
 
 
 @app.websocket("/ws")
@@ -160,12 +170,13 @@ async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time simulation updates."""
     await websocket.accept()
 
-    if not simulation:
+    sim = _get_sim()
+    if not sim:
         await websocket.send_json({"error": "No simulation running"})
         await websocket.close()
         return
 
-    queue = simulation.subscribe()
+    queue = sim.subscribe()
 
     try:
         while True:
@@ -182,15 +193,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 data = await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
                 cmd = json.loads(data)
                 if cmd.get("type") == "stop":
-                    simulation.stop()
+                    sim.stop()
             except asyncio.TimeoutError:
                 pass
 
     except WebSocketDisconnect:
-        simulation.unsubscribe(queue)
+        sim.unsubscribe(queue)
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
-        simulation.unsubscribe(queue)
+        sim.unsubscribe(queue)
 
 
 # Serve frontend

@@ -192,9 +192,7 @@ class SimulationEngine:
                             continue
 
                         strategy_name = agent.strategy.name
-                        strategy_category = getattr(
-                            agent.strategy, "category", "unknown"
-                        )
+                        strategy_category = agent.strategy.category
 
                         # All observers get notified via bus
                         self.signal_bus.publish_signal(
@@ -426,9 +424,22 @@ class SimulationEngine:
         if queue in self.subscribers:
             self.subscribers.remove(queue)
 
+    @staticmethod
+    def _json_serialize(obj: object) -> str:
+        """Fallback serializer for non-standard types.
+
+        Explicit conversions instead of blanket str() — prevents silent
+        data corruption when unexpected types sneak into broadcast payloads.
+        """
+        if isinstance(obj, float):
+            return round(obj, 6)
+        if hasattr(obj, "value"):  # Enum
+            return obj.value
+        raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
     async def _broadcast(self, data: dict) -> None:
         """Broadcast state to all subscribers."""
-        message = json.dumps(data, default=str)
+        message = json.dumps(data, default=self._json_serialize)
         for queue in self.subscribers:
             try:
                 queue.put_nowait(message)

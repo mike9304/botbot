@@ -12,7 +12,7 @@ and betting against everything they do.
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Optional, cast
 
 from src.core.exchange import VirtualExchange
 from src.core.models import Candle, Side, TradeSignal
@@ -42,7 +42,7 @@ class CounterIndicatorAgent(TradingAgent, SignalObserver, FireObserver):
 
     def __init__(self, config: AgentConfig, exchange: VirtualExchange):
         super().__init__(config, exchange)
-        self.counter_strategy: CounterIndicatorStrategy = config.strategy  # type: ignore
+        self.counter_strategy = cast(CounterIndicatorStrategy, config.strategy)
         self._observed_count = 0
         self._inverted_count = 0
         self._feedback_loop_resets = 0
@@ -149,7 +149,7 @@ class StrategyTypeCounterAgent(TradingAgent, SignalObserver):
 
     def __init__(self, config: AgentConfig, exchange: VirtualExchange):
         super().__init__(config, exchange)
-        self.type_counter: StrategyTypeCounterIndicatorStrategy = config.strategy  # type: ignore
+        self.type_counter = cast(StrategyTypeCounterIndicatorStrategy, config.strategy)
         self._observed_count = 0
         self._inverted_count = 0
         self._current_regime = "unknown"

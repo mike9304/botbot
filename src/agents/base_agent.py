@@ -37,6 +37,8 @@ class TradingAgent:
         self.daily_trades = 0
         self.candles_since_last_trade = 999
         self.active = True
+        self._cached_fitness: float = 0.0
+        self._fitness_trade_count: int = -1  # invalidation sentinel
 
         # Register on exchange
         exchange.register_agent(self.id, config.initial_balance)
@@ -64,7 +66,9 @@ class TradingAgent:
         signal = self.strategy.update(candle)
 
         if signal and self._can_trade(account, signal):
-            order = self.exchange.execute_signal(self.id, signal)
+            order = self.exchange.execute_signal(
+                self.id, signal, risk_per_trade=self.config.risk_per_trade,
+            )
             if order:
                 self.daily_trades += 1
                 self.candles_since_last_trade = 0
@@ -101,6 +105,8 @@ class TradingAgent:
     def fitness(self) -> float:
         """Calculate fitness score using risk-adjusted returns (Sortino-like).
 
+        Cached by trade count — only recomputed when account.total_trades changes.
+
         Multi-regime aware fitness (Lohpetch & Corne, 2010):
         - Uses Sortino ratio concept: penalize downside volatility only
         - Rewards consistent positive PnL (not just total PnL)
@@ -110,6 +116,10 @@ class TradingAgent:
         account = self.account
         if not account or account.total_trades == 0:
             return 0.0
+
+        # Return cached value if trade count hasn't changed
+        if account.total_trades == self._fitness_trade_count:
+            return self._cached_fitness
 
         pnl_score = account.pnl_percent
 
@@ -124,7 +134,11 @@ class TradingAgent:
 
         trade_frequency = min(account.total_trades / 10, 2.0)
 
-        return pnl_score + win_rate_bonus - downside_penalty + consistency + trade_frequency
+        self._cached_fitness = (
+            pnl_score + win_rate_bonus - downside_penalty + consistency + trade_frequency
+        )
+        self._fitness_trade_count = account.total_trades
+        return self._cached_fitness
 
 
 class AgentGroup:
