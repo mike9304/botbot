@@ -24,6 +24,17 @@ from src.strategies.counter_indicator import (
     CounterIndicatorStrategy,
     StrategyTypeCounterIndicatorStrategy,
 )
+from src.strategies.proven_bots import (
+    CombinedBinHClucStrategy,
+    MultiTimeframeTrendStrategy,
+    NostalgiaForInfinityStrategy,
+    ScalpingMomentumStrategy,
+)
+from src.strategies.sentiment import (
+    SentimentContrarianStrategy,
+    SentimentFollowerStrategy,
+    SentimentMomentumStrategy,
+)
 from src.strategies.momentum import (
     MeanReversionStrategy,
     MomentumBreakoutStrategy,
@@ -39,6 +50,7 @@ from src.strategies.technical import (
 
 from .base_agent import AgentConfig, AgentGroup, TradingAgent
 from .counter_agent import CounterIndicatorAgent, StrategyTypeCounterAgent
+from src.evolution.loser_evolution import InverseLoserAgent
 
 # Supported trading symbols (by market cap / volume)
 DEFAULT_SYMBOLS = [
@@ -102,6 +114,27 @@ def create_all_groups(exchange: VirtualExchange) -> list[AgentGroup]:
     # Group 14: Strategy-Type Counter Agents (invert losing strategy types)
     type_counter_group, type_counter_agents = _create_type_counter_group(exchange)
     groups.append(type_counter_group)
+
+    # === SENTIMENT ANALYSIS GROUPS (FOLLOWER vs CONTRARIAN) ===
+
+    # Group 15: Sentiment Followers (trade WITH the crowd)
+    groups.append(_create_sentiment_follower_group(exchange))
+
+    # Group 16: Sentiment Faders (trade AGAINST the crowd)
+    groups.append(_create_sentiment_contrarian_group(exchange))
+
+    # === PROVEN BOT STRATEGIES ===
+
+    # Group 17: Proven Bots (adapted from top real-world trading bots)
+    groups.append(_create_proven_bots_group(exchange))
+
+    # === LOSER LEAGUE ===
+
+    # Group 18: Loser League (evolved worst agents as reverse indicators)
+    groups.append(_create_loser_league_group(exchange))
+
+    # Group 19: Inverse Losers (profit from loser signals)
+    groups.append(_create_inverse_loser_group(exchange))
 
     return groups
 
@@ -520,3 +553,176 @@ def _create_type_counter_group(
         group.add_agent(agent)
         agents.append(agent)
     return group, agents
+
+
+# === SENTIMENT ANALYSIS GROUPS ===
+
+
+def _create_sentiment_follower_group(exchange: VirtualExchange) -> AgentGroup:
+    """Group 15: Sentiment Followers.
+
+    Trade WITH the crowd — when online sentiment is bullish, go LONG.
+    Tests the hypothesis that crowds are sometimes right (in trending markets).
+    """
+    group = AgentGroup(
+        name="Sentiment Followers",
+        description="Trade WITH crowd sentiment — bullish crowd = LONG",
+        category="sentiment_follow",
+    )
+    strategies = [
+        ("sent_follow_default", SentimentFollowerStrategy()),
+        ("sent_follow_sensitive", SentimentFollowerStrategy({
+            "bullish_threshold": 20, "bearish_threshold": -20,
+        })),
+        ("sent_momentum", SentimentMomentumStrategy()),
+        ("sent_momentum_tight", SentimentMomentumStrategy({
+            "acceleration_threshold": 10, "min_sentiment_level": 15,
+        })),
+    ]
+    for name, strategy in strategies:
+        agent = TradingAgent(
+            AgentConfig(
+                name=name, group="sentiment_follow", strategy=strategy,
+                symbols=DEFAULT_SYMBOLS[:5],
+            ),
+            exchange,
+        )
+        group.add_agent(agent)
+    return group
+
+
+def _create_sentiment_contrarian_group(exchange: VirtualExchange) -> AgentGroup:
+    """Group 16: Sentiment Faders.
+
+    Trade AGAINST the crowd — when euphoria peaks, SHORT.
+    Tests the contrarian hypothesis that crowds are wrong at extremes.
+    """
+    group = AgentGroup(
+        name="Sentiment Faders",
+        description="Trade AGAINST crowd sentiment — euphoria = SHORT",
+        category="sentiment_fade",
+    )
+    strategies = [
+        ("sent_contra_default", SentimentContrarianStrategy()),
+        ("sent_contra_aggressive", SentimentContrarianStrategy({
+            "extreme_bullish_threshold": 55, "extreme_bearish_threshold": -55,
+            "require_divergence": False,
+        })),
+        ("sent_contra_careful", SentimentContrarianStrategy({
+            "extreme_bullish_threshold": 75, "extreme_bearish_threshold": -75,
+            "require_divergence": True,
+        })),
+    ]
+    for name, strategy in strategies:
+        agent = TradingAgent(
+            AgentConfig(
+                name=name, group="sentiment_fade", strategy=strategy,
+                symbols=DEFAULT_SYMBOLS[:5],
+            ),
+            exchange,
+        )
+        group.add_agent(agent)
+    return group
+
+
+# === PROVEN BOT STRATEGIES ===
+
+
+def _create_proven_bots_group(exchange: VirtualExchange) -> AgentGroup:
+    """Group 17: Proven Bots.
+
+    Strategies adapted from top real-world trading bots
+    (NostalgiaForInfinity, CombinedBinHCluc, scalpers, multi-TF).
+    """
+    group = AgentGroup(
+        name="Proven Bots",
+        description="Adapted from top real-world trading bots (Freqtrade, 3Commas)",
+        category="proven_bot",
+    )
+    strategies = [
+        ("nfi_default", NostalgiaForInfinityStrategy()),
+        ("nfi_aggressive", NostalgiaForInfinityStrategy({
+            "leverage": 6, "stop_loss_pct": 0.025, "take_profit_pct": 0.06,
+        })),
+        ("binhcluc_default", CombinedBinHClucStrategy()),
+        ("binhcluc_tight", CombinedBinHClucStrategy({
+            "close_to_bb_ratio": 0.995, "rsi_buy": 35,
+        })),
+        ("scalper_default", ScalpingMomentumStrategy()),
+        ("scalper_fast", ScalpingMomentumStrategy({
+            "ema_ultra_fast": 2, "ema_fast": 5, "leverage": 10,
+            "stop_loss_pct": 0.005, "take_profit_pct": 0.01,
+        })),
+        ("mtf_trend_default", MultiTimeframeTrendStrategy()),
+    ]
+    for name, strategy in strategies:
+        agent = TradingAgent(
+            AgentConfig(
+                name=name, group="proven_bot", strategy=strategy,
+                symbols=DEFAULT_SYMBOLS[:5],
+            ),
+            exchange,
+        )
+        group.add_agent(agent)
+    return group
+
+
+# === LOSER LEAGUE ===
+
+
+def _create_loser_league_group(exchange: VirtualExchange) -> AgentGroup:
+    """Group 18: Loser League.
+
+    Placeholder group — agents are added dynamically during evolution
+    when the worst performers from other groups are collected here.
+    Initially empty; populated by LoserLeague.evolve_losers().
+    """
+    group = AgentGroup(
+        name="Loser League",
+        description="Evolved worst agents — used as reverse indicators",
+        category="loser_league",
+    )
+    # Start with seed losers (intentionally bad params)
+    bad_strategies = [
+        ("loser_seed_rsi", RSIMACDStrategy({"rsi_overbought": 50, "rsi_oversold": 50})),
+        ("loser_seed_mr", MeanReversionStrategy({"z_score_entry": 0.5, "lookback_period": 5})),
+    ]
+    for name, strategy in bad_strategies:
+        agent = TradingAgent(
+            AgentConfig(
+                name=name, group="loser_league", strategy=strategy,
+                symbols=DEFAULT_SYMBOLS[:5],
+            ),
+            exchange,
+        )
+        group.add_agent(agent)
+    return group
+
+
+def _create_inverse_loser_group(exchange: VirtualExchange) -> AgentGroup:
+    """Group 19: Inverse Losers.
+
+    Agents that watch the Loser League and invert all their signals.
+    This is how we profit from consistently bad agents.
+    """
+    group = AgentGroup(
+        name="Inverse Losers",
+        description="Invert Loser League signals for profit",
+        category="inverse_loser",
+    )
+    configs = [
+        "inverse_loser_default",
+        "inverse_loser_conservative",
+        "inverse_loser_aggressive",
+    ]
+    for name in configs:
+        agent = InverseLoserAgent(
+            AgentConfig(
+                name=name, group="inverse_loser",
+                strategy=RSIMACDStrategy(),  # Placeholder; signals come from losers
+                symbols=DEFAULT_SYMBOLS[:5],
+            ),
+            exchange,
+        )
+        group.add_agent(agent)
+    return group
