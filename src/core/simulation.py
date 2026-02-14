@@ -16,9 +16,10 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from src.agents.base_agent import AgentGroup, TradingAgent
+from src.agents.counter_agent import CounterIndicatorAgent, StrategyTypeCounterAgent
 from src.agents.group_factory import DEFAULT_SYMBOLS, create_all_groups
 from src.core.exchange import VirtualExchange
-from src.core.models import Candle
+from src.core.models import Candle, TradeSignal
 from src.data.market_data import generate_multi_symbol_data
 from src.evolution.genetic import EvolutionConfig, GeneticEvolver
 
@@ -48,6 +49,8 @@ class SimulationEngine:
         self.market_data: dict[str, list[Candle]] = {}
         self.subscribers: list[asyncio.Queue] = []
         self.rankings_history: list[dict] = []
+        self.counter_agents: list[CounterIndicatorAgent] = []
+        self.type_counter_agents: list[StrategyTypeCounterAgent] = []
 
     def setup(self):
         """Initialize the simulation."""
@@ -57,6 +60,20 @@ class SimulationEngine:
         self.groups = create_all_groups(self.exchange)
         total_agents = sum(len(g.agents) for g in self.groups)
         logger.info(f"Created {len(self.groups)} groups with {total_agents} total agents")
+
+        # Collect counter-indicator agents for signal observation
+        for group in self.groups:
+            for agent in group.agents:
+                if isinstance(agent, CounterIndicatorAgent):
+                    self.counter_agents.append(agent)
+                elif isinstance(agent, StrategyTypeCounterAgent):
+                    self.type_counter_agents.append(agent)
+
+        if self.counter_agents or self.type_counter_agents:
+            logger.info(
+                f"Counter-indicator system: {len(self.counter_agents)} agent-level, "
+                f"{len(self.type_counter_agents)} type-level counters active"
+            )
 
         # Generate or fetch market data
         logger.info(f"Generating market data for {self.config.symbols}...")
@@ -89,9 +106,24 @@ class SimulationEngine:
                 # Update exchange price
                 self.exchange.update_price(symbol, candle)
 
-                # Feed to all groups
+                # Feed to all groups and collect signals for counter-indicators
                 for group in self.groups:
-                    group.on_candle(candle)
+                    signals = group.on_candle(candle)
+
+                    # Forward signals to counter-indicator agents
+                    for agent, signal in signals:
+                        current_price = self.exchange.current_prices.get(signal.symbol, 0)
+                        if current_price <= 0:
+                            continue
+                        for counter in self.counter_agents:
+                            counter.on_other_agent_signal(
+                                agent.id, agent.strategy.name,
+                                signal, current_price,
+                            )
+                        for type_counter in self.type_counter_agents:
+                            type_counter.on_strategy_type_signal(
+                                agent.strategy.category, signal, current_price,
+                            )
 
             # Periodic evolution
             if i > 0 and i % self.config.evolution_interval == 0:

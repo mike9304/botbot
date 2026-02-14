@@ -45,20 +45,20 @@ class TradingAgent:
     def account(self) -> Optional[AccountState]:
         return self.exchange.accounts.get(self.id)
 
-    def on_candle(self, candle: Candle):
-        """Process new candle data."""
+    def on_candle(self, candle: Candle) -> Optional[TradeSignal]:
+        """Process new candle data. Returns the signal if one was generated."""
         if not self.active:
-            return
+            return None
 
         if candle.symbol not in self.config.symbols:
-            return
+            return None
 
         self.candles_since_last_trade += 1
 
         # Check existing position management
         account = self.account
         if not account:
-            return
+            return None
 
         # Strategy analysis
         signal = self.strategy.update(candle)
@@ -68,6 +68,9 @@ class TradingAgent:
             if order:
                 self.daily_trades += 1
                 self.candles_since_last_trade = 0
+                return signal
+
+        return signal  # Return even if not traded (for counter-indicator tracking)
 
     def _can_trade(self, account: AccountState, signal: TradeSignal) -> bool:
         if self.daily_trades >= self.config.max_daily_trades:
@@ -128,9 +131,14 @@ class AgentGroup:
     def add_agent(self, agent: TradingAgent):
         self.agents.append(agent)
 
-    def on_candle(self, candle: Candle):
+    def on_candle(self, candle: Candle) -> list[tuple[TradingAgent, TradeSignal]]:
+        """Feed candle to all agents, return list of (agent, signal) for generated signals."""
+        signals = []
         for agent in self.agents:
-            agent.on_candle(candle)
+            signal = agent.on_candle(candle)
+            if signal:
+                signals.append((agent, signal))
+        return signals
 
     def reset_daily_counters(self):
         for agent in self.agents:

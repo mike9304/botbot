@@ -1,0 +1,162 @@
+"""Counter-Indicator Agent that monitors other agents and inverts loser signals.
+
+This agent acts as a meta-learner:
+- It observes all other agents' signals and outcomes
+- Identifies "reliable losers" (consistently wrong agents)
+- Inverts their signals to generate profitable trades
+- Continuously updates its model of who to invert
+
+Think of it as a "talent scout in reverse" — finding the worst players
+and betting against everything they do.
+"""
+from __future__ import annotations
+
+import logging
+from typing import Optional
+
+from src.core.exchange import VirtualExchange
+from src.core.models import Candle, Side, TradeSignal
+from src.strategies.counter_indicator import (
+    CounterIndicatorStrategy,
+    StrategyTypeCounterIndicatorStrategy,
+)
+
+from .base_agent import AgentConfig, TradingAgent
+
+logger = logging.getLogger(__name__)
+
+
+class CounterIndicatorAgent(TradingAgent):
+    """An agent that monitors other agents and inverts signals from consistent losers.
+
+    Flow:
+    1. on_other_agent_signal(): Called when any other agent generates a signal
+    2. The CounterIndicatorStrategy tracks that agent's accuracy
+    3. If the source agent is a "reliable loser", generate an inverted signal
+    4. Execute the inverted signal on the exchange
+    """
+
+    def __init__(self, config: AgentConfig, exchange: VirtualExchange):
+        super().__init__(config, exchange)
+        self.counter_strategy: CounterIndicatorStrategy = config.strategy  # type: ignore
+        self._observed_count = 0
+        self._inverted_count = 0
+
+    def on_other_agent_signal(
+        self,
+        source_agent_id: str,
+        source_strategy_name: str,
+        signal: TradeSignal,
+        current_price: float,
+    ):
+        """Process a signal from another agent.
+
+        This is called by the simulation engine whenever ANY agent generates a signal.
+        """
+        if not self.active:
+            return
+
+        self._observed_count += 1
+
+        # Register the signal for tracking
+        self.counter_strategy.register_signal(
+            source_agent_id, source_strategy_name, signal, current_price
+        )
+
+        # Check if we should invert this signal
+        counter_signal = self.counter_strategy.generate_counter_signal(
+            source_agent_id, signal
+        )
+
+        if counter_signal and self._can_trade(self.account, counter_signal):
+            order = self.exchange.execute_signal(self.id, counter_signal)
+            if order:
+                self._inverted_count += 1
+                self.daily_trades += 1
+                self.candles_since_last_trade = 0
+                logger.info(
+                    f"COUNTER-INDICATOR {self.id}: Inverted {source_agent_id}'s "
+                    f"{signal.side.value} → {counter_signal.side.value} on {signal.symbol}"
+                )
+
+    def on_candle(self, candle: Candle):
+        """Process candle - mainly for updating price and existing positions."""
+        if not self.active:
+            return
+        self.candles_since_last_trade += 1
+
+    def get_summary(self) -> dict:
+        base = super().get_summary()
+        base.update({
+            "observed_signals": self._observed_count,
+            "inverted_signals": self._inverted_count,
+            "tracked_agents": len(self.counter_strategy.tracked_agents),
+            "reliable_losers": len(self.counter_strategy.get_inversion_candidates()),
+        })
+        return base
+
+    def get_tracking_report(self) -> list[dict]:
+        return self.counter_strategy.get_tracking_report()
+
+
+class StrategyTypeCounterAgent(TradingAgent):
+    """Counter agent at the strategy TYPE level.
+
+    Instead of tracking individual agents, this tracks strategy categories.
+    When an entire category (e.g., "momentum") is losing, it inverts ALL
+    signals from that category.
+
+    This is more aggressive but captures regime changes faster.
+    """
+
+    def __init__(self, config: AgentConfig, exchange: VirtualExchange):
+        super().__init__(config, exchange)
+        self.type_counter: StrategyTypeCounterIndicatorStrategy = config.strategy  # type: ignore
+        self._observed_count = 0
+        self._inverted_count = 0
+
+    def on_strategy_type_signal(
+        self,
+        strategy_type: str,
+        signal: TradeSignal,
+        current_price: float,
+    ):
+        """Process a signal categorized by strategy type."""
+        if not self.active:
+            return
+
+        self._observed_count += 1
+
+        self.type_counter.register_strategy_type_signal(
+            strategy_type, signal, current_price
+        )
+
+        counter_signal = self.type_counter.generate_counter_signal(
+            strategy_type, signal
+        )
+
+        if counter_signal and self._can_trade(self.account, counter_signal):
+            order = self.exchange.execute_signal(self.id, counter_signal)
+            if order:
+                self._inverted_count += 1
+                self.daily_trades += 1
+                self.candles_since_last_trade = 0
+                logger.info(
+                    f"TYPE-COUNTER {self.id}: Inverted {strategy_type} "
+                    f"{signal.side.value} → {counter_signal.side.value} on {signal.symbol}"
+                )
+
+    def on_candle(self, candle: Candle):
+        if not self.active:
+            return
+        self.candles_since_last_trade += 1
+
+    def get_summary(self) -> dict:
+        base = super().get_summary()
+        base.update({
+            "observed_signals": self._observed_count,
+            "inverted_signals": self._inverted_count,
+            "tracked_types": len(self.type_counter.type_trackers),
+            "losing_types": self.type_counter.get_losing_strategy_types(),
+        })
+        return base

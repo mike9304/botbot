@@ -16,12 +16,15 @@ botbot/
 │   │   └── ranking.py       # Ranking & prize distribution system
 │   ├── agents/
 │   │   ├── base_agent.py    # TradingAgent & AgentGroup classes
-│   │   └── group_factory.py # Creates 10 predefined agent groups
+│   │   ├── group_factory.py # Creates 14 predefined agent groups
+│   │   └── counter_agent.py # Counter-indicator agents (invert losers)
 │   ├── strategies/
-│   │   ├── base.py          # BaseStrategy & HybridStrategy
-│   │   ├── technical.py     # RSI/MACD, Bollinger, EMA, Fibonacci, VWAP
-│   │   ├── momentum.py      # Momentum breakout, mean reversion, RSI trend
-│   │   └── advanced.py      # Order flow, Smart Money (ICT), market regime
+│   │   ├── base.py              # BaseStrategy & HybridStrategy
+│   │   ├── technical.py         # RSI/MACD, Bollinger, EMA, Fibonacci, VWAP
+│   │   ├── momentum.py          # Momentum breakout, mean reversion, RSI trend
+│   │   ├── advanced.py          # Order flow, Smart Money (ICT), market regime
+│   │   ├── contrarian.py        # Fear/Greed, Retail Fader, Wyckoff, Funding Rate
+│   │   └── counter_indicator.py # Invert losing agents/strategy types
 │   ├── evolution/
 │   │   ├── genetic.py       # Genetic algorithm (crossover, mutation, selection)
 │   │   └── reinforcement.py # Q-Learning RL component
@@ -62,7 +65,7 @@ python main.py --candles 5000 --speed 20 --symbols "BTCUSDT,ETHUSDT,SOLUSDT"
 - Async for I/O operations (aiohttp, WebSocket)
 - Tests in `tests/` with pytest
 
-## Agent Groups (10 total)
+## Agent Groups (14 total)
 
 ### Pure Strategy Groups (5):
 1. **Technical Analysts** - RSI/MACD, Bollinger, EMA, Fibonacci, VWAP
@@ -78,6 +81,14 @@ python main.py --candles 5000 --speed 20 --symbols "BTCUSDT,ETHUSDT,SOLUSDT"
 9. **Conservative Hybrids** - Mean reversion + Regime (low risk)
 10. **Aggressive Hybrids** - Momentum + SMC (high risk)
 
+### Contrarian / Psychology Groups (2):
+11. **Crowd Psychology Contrarians** - Fear/Greed index, retail FOMO fading, Wyckoff, funding rate contrarian
+12. **Contrarian-Tech Hybrids** - Contrarian signals confirmed by technical analysis
+
+### Counter-Indicator Groups (2):
+13. **Counter-Indicators** - Monitor losing agents and invert their signals
+14. **Strategy-Type Counters** - Track losing strategy CATEGORIES and systematically invert them
+
 ## Binance Futures Fee Model
 - Maker: 0.02%, Taker: 0.05%
 - Leverage: up to 125x BTC, 100x ETH, 75x others
@@ -89,3 +100,11 @@ python main.py --candles 5000 --speed 20 --symbols "BTCUSDT,ETHUSDT,SOLUSDT"
 - **Hire/Fire**: Bottom 20% replaced by offspring of top 20%
 - **RL Component**: Q-Learning for position sizing and exit timing
 - **Prizes**: Distributed to top performers each generation
+
+## Contrarian & Counter-Indicator System
+- **Fear/Greed Index**: Synthetic index from momentum, volatility, volume, RSI, streak
+- **Retail Fader**: Detects FOMO buying and panic selling, then fades them
+- **Funding Rate**: Simulates Binance funding rate, shorts extreme longs and vice versa
+- **Wyckoff Psychology**: Detects accumulation/distribution phases with spring/upthrust patterns
+- **Counter-Indicator**: Tracks individual agents' accuracy; inverts signals from agents with <40% win rate
+- **Type Counter**: Tracks entire strategy categories; when "momentum" type is losing, inverts ALL momentum signals

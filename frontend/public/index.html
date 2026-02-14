@@ -241,6 +241,8 @@
         .tag-hybrid { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
         .tag-regime { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
         .tag-ensemble { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+        .tag-contrarian { background: rgba(251, 146, 60, 0.2); color: #fb923c; }
+        .tag-counter_indicator { background: rgba(244, 63, 94, 0.25); color: #f43f5e; }
 
         /* Group Cards */
         .groups-grid {
@@ -676,7 +678,11 @@
                 'hybrid_of_tech': 'tag-hybrid',
                 'hybrid_conservative': 'tag-hybrid',
                 'hybrid_aggressive': 'tag-hybrid',
+                'hybrid_contrarian': 'tag-contrarian',
                 'ensemble': 'tag-ensemble',
+                'contrarian': 'tag-contrarian',
+                'counter_indicator': 'tag-counter_indicator',
+                'type_counter': 'tag-counter_indicator',
             };
             return map[category] || 'tag-technical';
         }

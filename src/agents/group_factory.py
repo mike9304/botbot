@@ -14,6 +14,16 @@ from src.strategies.advanced import (
     SmartMoneyConceptStrategy,
 )
 from src.strategies.base import HybridStrategy
+from src.strategies.contrarian import (
+    FearGreedContrarianStrategy,
+    FundingRateContrarianStrategy,
+    RetailSentimentFaderStrategy,
+    WyckoffPsychologyStrategy,
+)
+from src.strategies.counter_indicator import (
+    CounterIndicatorStrategy,
+    StrategyTypeCounterIndicatorStrategy,
+)
 from src.strategies.momentum import (
     MeanReversionStrategy,
     MomentumBreakoutStrategy,
@@ -28,6 +38,7 @@ from src.strategies.technical import (
 )
 
 from .base_agent import AgentConfig, AgentGroup, TradingAgent
+from .counter_agent import CounterIndicatorAgent, StrategyTypeCounterAgent
 
 # Supported trading symbols (by market cap / volume)
 DEFAULT_SYMBOLS = [
@@ -73,6 +84,24 @@ def create_all_groups(exchange: VirtualExchange) -> list[AgentGroup]:
 
     # Group 10: Aggressive Hybrid (momentum + SMC)
     groups.append(_create_hybrid_aggressive(exchange))
+
+    # === CONTRARIAN / PSYCHOLOGY GROUPS ===
+
+    # Group 11: Crowd Psychology Contrarians
+    groups.append(_create_contrarian_group(exchange))
+
+    # Group 12: Contrarian + Technical Hybrids
+    groups.append(_create_hybrid_contrarian_tech(exchange))
+
+    # === COUNTER-INDICATOR GROUPS ===
+
+    # Group 13: Counter-Indicator Agents (invert losing agents)
+    counter_group, counter_agents = _create_counter_indicator_group(exchange)
+    groups.append(counter_group)
+
+    # Group 14: Strategy-Type Counter Agents (invert losing strategy types)
+    type_counter_group, type_counter_agents = _create_type_counter_group(exchange)
+    groups.append(type_counter_group)
 
     return groups
 
@@ -332,3 +361,162 @@ def _create_hybrid_aggressive(exchange: VirtualExchange) -> AgentGroup:
         )
         group.add_agent(agent)
     return group
+
+
+# === CONTRARIAN / PSYCHOLOGY GROUPS ===
+
+
+def _create_contrarian_group(exchange: VirtualExchange) -> AgentGroup:
+    """Group 11: Crowd Psychology Contrarians.
+
+    Agents that analyze crowd/retail psychology and trade AGAINST the herd.
+    """
+    group = AgentGroup(
+        name="Crowd Psychology Contrarians",
+        description="Fear/Greed index, retail FOMO fading, funding rate contrarian, Wyckoff psychology",
+        category="contrarian",
+    )
+    strategies = [
+        ("fear_greed_default", FearGreedContrarianStrategy()),
+        ("fear_greed_sensitive", FearGreedContrarianStrategy({
+            "extreme_greed_threshold": 72, "extreme_fear_threshold": 28,
+        })),
+        ("retail_fader_default", RetailSentimentFaderStrategy()),
+        ("retail_fader_sensitive", RetailSentimentFaderStrategy({
+            "fomo_price_threshold": 0.03, "panic_price_threshold": -0.03,
+            "volume_surge_mult": 1.5,
+        })),
+        ("funding_contrarian_default", FundingRateContrarianStrategy()),
+        ("funding_contrarian_sensitive", FundingRateContrarianStrategy({
+            "extreme_threshold": 0.6, "confirmation_candles": 2,
+        })),
+        ("wyckoff_default", WyckoffPsychologyStrategy()),
+        ("wyckoff_sensitive", WyckoffPsychologyStrategy({
+            "range_threshold": 0.05, "spring_threshold": 0.003,
+        })),
+    ]
+    for name, strategy in strategies:
+        agent = TradingAgent(
+            AgentConfig(name=name, group="contrarian", strategy=strategy, symbols=DEFAULT_SYMBOLS[:5]),
+            exchange,
+        )
+        group.add_agent(agent)
+    return group
+
+
+def _create_hybrid_contrarian_tech(exchange: VirtualExchange) -> AgentGroup:
+    """Group 12: Contrarian + Technical Hybrids.
+
+    Combine contrarian signals with technical confirmation for higher confidence.
+    """
+    group = AgentGroup(
+        name="Contrarian-Tech Hybrids",
+        description="Contrarian psychology combined with technical confirmation",
+        category="hybrid",
+    )
+    combos = [
+        ("fear_greed+rsi_macd", [
+            (FearGreedContrarianStrategy(), 0.6),
+            (RSIMACDStrategy(), 0.4),
+        ]),
+        ("retail_fader+bollinger", [
+            (RetailSentimentFaderStrategy(), 0.5),
+            (BollingerBreakoutStrategy(), 0.5),
+        ]),
+        ("wyckoff+smc", [
+            (WyckoffPsychologyStrategy(), 0.5),
+            (SmartMoneyConceptStrategy(), 0.5),
+        ]),
+        ("funding+regime+vwap", [
+            (FundingRateContrarianStrategy(), 0.4),
+            (MarketRegimeStrategy(), 0.3),
+            (VolumeProfileStrategy(), 0.3),
+        ]),
+    ]
+    for name, strats in combos:
+        hybrid = HybridStrategy(strats, {"confidence_threshold": 0.55})
+        agent = TradingAgent(
+            AgentConfig(
+                name=name, group="hybrid_contrarian", strategy=hybrid,
+                symbols=DEFAULT_SYMBOLS[:5],
+            ),
+            exchange,
+        )
+        group.add_agent(agent)
+    return group
+
+
+def _create_counter_indicator_group(
+    exchange: VirtualExchange,
+) -> tuple[AgentGroup, list[CounterIndicatorAgent]]:
+    """Group 13: Counter-Indicator Agents.
+
+    These agents DON'T analyze price. Instead, they monitor OTHER agents'
+    signals and invert signals from agents who are consistently wrong.
+    """
+    group = AgentGroup(
+        name="Counter-Indicators",
+        description="Monitor losing agents and trade OPPOSITE to their signals",
+        category="counter_indicator",
+    )
+    agents = []
+    configs = [
+        ("counter_default", CounterIndicatorStrategy()),
+        ("counter_aggressive", CounterIndicatorStrategy({
+            "loser_accuracy_threshold": 0.45,
+            "min_inversion_confidence": 0.50,
+            "leverage": 7,
+        })),
+        ("counter_conservative", CounterIndicatorStrategy({
+            "loser_accuracy_threshold": 0.35,
+            "min_inversion_confidence": 0.60,
+            "min_trades_for_tracking": 15,
+            "leverage": 3,
+        })),
+    ]
+    for name, strategy in configs:
+        agent = CounterIndicatorAgent(
+            AgentConfig(
+                name=name, group="counter_indicator", strategy=strategy,
+                symbols=DEFAULT_SYMBOLS[:5], max_daily_trades=20,
+            ),
+            exchange,
+        )
+        group.add_agent(agent)
+        agents.append(agent)
+    return group, agents
+
+
+def _create_type_counter_group(
+    exchange: VirtualExchange,
+) -> tuple[AgentGroup, list[StrategyTypeCounterAgent]]:
+    """Group 14: Strategy-Type Counter Agents.
+
+    Track entire strategy CATEGORIES and invert the losing ones.
+    More aggressive approach that captures regime changes faster.
+    """
+    group = AgentGroup(
+        name="Strategy-Type Counters",
+        description="Track losing STRATEGY TYPES and systematically invert their signals",
+        category="counter_indicator",
+    )
+    agents = []
+    configs = [
+        ("type_counter_default", StrategyTypeCounterIndicatorStrategy()),
+        ("type_counter_aggressive", StrategyTypeCounterIndicatorStrategy({
+            "loser_accuracy_threshold": 0.45,
+            "min_inversion_confidence": 0.50,
+            "leverage": 6,
+        })),
+    ]
+    for name, strategy in configs:
+        agent = StrategyTypeCounterAgent(
+            AgentConfig(
+                name=name, group="type_counter", strategy=strategy,
+                symbols=DEFAULT_SYMBOLS[:5], max_daily_trades=20,
+            ),
+            exchange,
+        )
+        group.add_agent(agent)
+        agents.append(agent)
+    return group, agents
