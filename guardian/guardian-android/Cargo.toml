@@ -1,0 +1,21 @@
+[package]
+name = "guardian-android"
+description = "Android UniFFI bindings for Home Guardian"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+guardian-common = { path = "../guardian-common" }
+guardian-core = { path = "../guardian-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+[lib]
+crate-type = ["cdylib"]

@@ -1,0 +1,31 @@
+[package]
+name = "guardian-core"
+description = "Core detection engine for Home Guardian antivirus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+guardian-common = { path = "../guardian-common" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+aho-corasick = { workspace = true }
+rusqlite = { workspace = true }
+goblin = { workspace = true }
+memmap2 = { workspace = true }
+bloomfilter = { workspace = true }
+zip = { workspace = true }
+flate2 = { workspace = true }
+tar = { workspace = true }
+tokio = { workspace = true }
+chrono = { workspace = true }
+ort = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

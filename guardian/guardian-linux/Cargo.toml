@@ -1,0 +1,18 @@
+[package]
+name = "guardian-linux"
+description = "Linux platform monitoring (fanotify + eBPF) for Home Guardian"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+guardian-common = { path = "../guardian-common" }
+guardian-core = { path = "../guardian-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { version = "0.29", features = ["fanotify", "poll"] }

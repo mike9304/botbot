@@ -1,0 +1,16 @@
+[package]
+name = "guardian-common"
+description = "Shared types, errors, and configuration for Home Guardian"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+figment = { workspace = true }
+toml = { workspace = true }
