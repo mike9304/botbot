@@ -1,256 +1,647 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" dir="ltr">
 <head>
+    <!-- Round 5: SEO Performance - preconnect, preload -->
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BotBot - Crypto Trading Agent Arena</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <!-- Round 1: SEO Meta Tags -->
+    <title>BotBot - AI Crypto Trading Agent Arena | 암호화폐 자동매매 시뮬레이션</title>
+    <meta name="description" content="BotBot은 70+ AI 에이전트가 경쟁하는 암호화폐 선물 트레이딩 시뮬레이션 플랫폼입니다. 유전 알고리즘, 강화학습, AI Teacher가 에이전트를 진화시킵니다. Multi-agent crypto futures trading simulation with genetic evolution and reinforcement learning.">
+    <meta name="keywords" content="crypto trading bot, AI trading, cryptocurrency futures, genetic algorithm, reinforcement learning, trading simulation, 암호화폐, 자동매매, 트레이딩봇, BotBot, agent arena">
+    <meta name="author" content="BotBot Team">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <link rel="canonical" href="/">
+    <meta name="theme-color" content="#0a0e17" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+
+    <!-- Round 1: Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="BotBot - AI Crypto Trading Agent Arena">
+    <meta property="og:description" content="70+ AI 에이전트가 경쟁하는 암호화폐 선물 트레이딩 시뮬레이션. 유전 알고리즘과 강화학습으로 에이전트가 진화합니다.">
+    <meta property="og:site_name" content="BotBot Trading Arena">
+    <meta property="og:locale" content="ko_KR">
+    <meta property="og:locale:alternate" content="en_US">
+
+    <!-- Round 1: Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="BotBot - AI Crypto Trading Agent Arena">
+    <meta name="twitter:description" content="70+ AI agents compete in crypto futures trading simulation with genetic evolution.">
+
+    <!-- Round 2: JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "BotBot Trading Arena",
+        "alternateName": "BotBot - AI Crypto Trading Agent Arena",
+        "description": "Multi-agent cryptocurrency futures trading simulation with genetic evolution, reinforcement learning, and AI Teacher oversight. 70+ agents compete across 19 groups.",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web Browser",
+        "browserRequirements": "Requires JavaScript, WebSocket support",
+        "softwareVersion": "0.1.0",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "featureList": [
+            "Real-time trading simulation",
+            "70+ AI trading agents",
+            "19 agent groups with unique strategies",
+            "Genetic algorithm evolution",
+            "Reinforcement learning",
+            "AI Teacher oversight",
+            "Live WebSocket updates",
+            "Binance Futures fee model"
+        ],
+        "inLanguage": ["ko", "en"]
+    }
+    </script>
+
+    <!-- Round 5: Font preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Round 20: PWA hint -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BotBot">
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        /* ===== RESET & ROOT ===== */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --bg-primary: #0a0e17;
-            --bg-secondary: #111827;
-            --bg-card: #1a2332;
-            --bg-card-hover: #1f2a3c;
-            --text-primary: #e5e7eb;
-            --text-secondary: #9ca3af;
+            /* Round 10: Refined color system with WCAG AA contrast */
+            --bg-primary: #060912;
+            --bg-secondary: #0f1420;
+            --bg-card: #151b2b;
+            --bg-card-hover: #1c2438;
+            --bg-glass: rgba(21, 27, 43, 0.7);
+            --bg-modal-overlay: rgba(6, 9, 18, 0.85);
+            --text-primary: #f0f2f5;
+            --text-secondary: #8b95a8;
+            --text-muted: #5a6478;
             --accent-green: #10b981;
+            --accent-green-dim: rgba(16, 185, 129, 0.15);
             --accent-red: #ef4444;
+            --accent-red-dim: rgba(239, 68, 68, 0.15);
             --accent-blue: #3b82f6;
+            --accent-blue-dim: rgba(59, 130, 246, 0.15);
             --accent-purple: #8b5cf6;
             --accent-yellow: #f59e0b;
             --accent-cyan: #06b6d4;
-            --border-color: #374151;
-            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --accent-pink: #ec4899;
+            --border-color: rgba(55, 65, 81, 0.6);
+            --border-glow: rgba(59, 130, 246, 0.3);
+            --gradient-brand: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-gold: linear-gradient(135deg, #ffd700, #ffaa00);
+            --gradient-card: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+            --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.15);
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --transition-fast: 0.15s ease;
+            --transition-normal: 0.25s ease;
+            --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        /* Round 15: Light theme */
+        [data-theme="light"] {
+            --bg-primary: #f5f7fa;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f0f2f5;
+            --bg-glass: rgba(255, 255, 255, 0.85);
+            --bg-modal-overlay: rgba(0, 0, 0, 0.5);
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-muted: #9ca3af;
+            --border-color: rgba(209, 213, 219, 0.8);
+            --border-glow: rgba(59, 130, 246, 0.2);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+            --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.08);
+            --gradient-card: linear-gradient(135deg, rgba(102, 126, 234, 0.03), rgba(118, 75, 162, 0.03));
+        }
+
+        /* ===== TYPOGRAPHY (Round 6) ===== */
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
         }
 
+        code, .mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }
+
+        /* Round 4: Skip Navigation for accessibility */
+        .skip-nav {
+            position: absolute;
+            top: -100%;
+            left: 16px;
+            background: var(--accent-blue);
+            color: white;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            z-index: 9999;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .skip-nav:focus {
+            top: 8px;
+        }
+
+        /* ===== HEADER (Round 7) ===== */
         .header {
-            background: var(--bg-secondary);
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border-color);
-            padding: 12px 24px;
+            padding: 0 24px;
+            height: 60px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             position: sticky;
             top: 0;
             z-index: 100;
+            transition: box-shadow var(--transition-normal);
+        }
+
+        .header.scrolled {
+            box-shadow: var(--shadow-md);
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-logo {
+            width: 32px;
+            height: 32px;
+            background: var(--gradient-brand);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 900;
+            color: white;
+            flex-shrink: 0;
         }
 
         .header h1 {
-            font-size: 20px;
-            background: var(--gradient-1);
+            font-size: 18px;
+            font-weight: 800;
+            background: var(--gradient-brand);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            font-weight: 800;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+
+        .header h1 small {
+            display: block;
+            font-size: 10px;
+            font-weight: 500;
+            -webkit-text-fill-color: var(--text-muted);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        /* Round 7: Navigation tabs */
+        .header-nav {
+            display: flex;
+            gap: 2px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-md);
+            padding: 3px;
+        }
+
+        .nav-tab {
+            padding: 6px 14px;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
+        }
+
+        .nav-tab:hover { color: var(--text-primary); }
+        .nav-tab.active {
+            background: var(--accent-blue);
+            color: white;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.3);
         }
 
         .header-controls {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             align-items: center;
         }
 
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
+        /* ===== BUTTONS ===== */
+        .btn {
+            padding: 7px 16px;
+            border: none;
+            border-radius: var(--radius-sm);
             font-size: 12px;
             font-weight: 600;
-        }
-
-        .status-idle { background: var(--border-color); color: var(--text-secondary); }
-        .status-running { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
-        .status-complete { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
-
-        .btn {
-            padding: 6px 16px;
-            border: none;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
         }
+
+        .btn:active { transform: scale(0.97); }
 
         .btn-primary {
             background: var(--accent-blue);
             color: white;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.3);
         }
-
-        .btn-primary:hover { background: #2563eb; }
+        .btn-primary:hover { background: #2563eb; box-shadow: 0 4px 12px rgba(59,130,246,0.4); }
 
         .btn-danger {
             background: var(--accent-red);
             color: white;
+            box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+        }
+        .btn-danger:hover { background: #dc2626; }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+        .btn-ghost:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border-color: var(--text-muted);
         }
 
-        .btn-danger:hover { background: #dc2626; }
+        .btn-icon {
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-size: 16px;
+        }
+        .btn-icon:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: var(--radius-xl);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .status-idle { background: rgba(55,65,81,0.3); color: var(--text-muted); }
+        .status-running {
+            background: var(--accent-green-dim);
+            color: var(--accent-green);
+            animation: pulse-status 2s ease-in-out infinite;
+        }
+        .status-complete { background: var(--accent-blue-dim); color: var(--accent-blue); }
+
+        /* ===== MAIN LAYOUT ===== */
+        .main-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
 
         .main-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: auto auto auto;
             gap: 16px;
-            padding: 16px;
-            max-width: 1600px;
-            margin: 0 auto;
         }
 
+        /* ===== CARDS (Round 8: Glassmorphism) ===== */
         .card {
             background: var(--bg-card);
+            background-image: var(--gradient-card);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            transition: all var(--transition-normal);
+            animation: fadeInUp 0.5s ease backwards;
+        }
+
+        .card:hover {
+            border-color: var(--border-glow);
+            box-shadow: var(--shadow-glow);
         }
 
         .card-title {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 700;
-            color: var(--text-secondary);
+            color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .card-title .icon { font-size: 18px; }
+        .card-title .icon {
+            font-size: 16px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-blue-dim);
+            border-radius: var(--radius-sm);
+        }
 
-        /* Progress Bar */
+        /* ===== STATS ROW (Round 14) ===== */
+        .stats-row {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            text-align: center;
+            transition: all var(--transition-normal);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-card .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .stat-card .stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        /* ===== PROGRESS BAR ===== */
         .progress-section { grid-column: 1 / -1; }
 
         .progress-bar-container {
-            background: var(--bg-secondary);
-            border-radius: 8px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-xl);
             height: 8px;
             overflow: hidden;
             margin-top: 8px;
+            position: relative;
         }
 
         .progress-bar-fill {
             height: 100%;
-            background: var(--gradient-1);
-            border-radius: 8px;
-            transition: width 0.3s;
+            background: var(--gradient-brand);
+            border-radius: var(--radius-xl);
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .progress-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            animation: shimmer 2s infinite;
         }
 
         .progress-stats {
             display: flex;
             justify-content: space-between;
-            margin-top: 8px;
+            margin-top: 10px;
             font-size: 12px;
             color: var(--text-secondary);
         }
 
-        /* Price Tickers */
+        /* ===== PRICE TICKERS ===== */
         .price-section { grid-column: 1 / -1; }
 
         .price-tickers {
             display: flex;
-            gap: 12px;
+            gap: 10px;
             overflow-x: auto;
             padding: 4px 0;
+            scrollbar-width: thin;
         }
 
         .price-ticker {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 10px 16px;
-            min-width: 140px;
+            border-radius: var(--radius-md);
+            padding: 12px 20px;
+            min-width: 150px;
             text-align: center;
+            transition: all var(--transition-fast);
+            flex-shrink: 0;
+        }
+
+        .price-ticker:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-1px);
         }
 
         .price-ticker .symbol {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
             color: var(--accent-cyan);
+            letter-spacing: 0.5px;
         }
 
         .price-ticker .price {
-            font-size: 18px;
-            font-weight: 700;
+            font-size: 20px;
+            font-weight: 800;
+            margin-top: 2px;
+            letter-spacing: -0.02em;
+        }
+
+        .price-ticker .change {
+            font-size: 11px;
+            font-weight: 600;
             margin-top: 2px;
         }
 
-        /* Leaderboard */
+        /* ===== SEARCH BAR (Round 17) ===== */
+        .search-bar-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 8px 14px;
+            padding-left: 36px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+            transition: border-color var(--transition-fast);
+            position: relative;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+
+        .search-wrapper {
+            position: relative;
+            flex: 1;
+        }
+
+        .search-wrapper::before {
+            content: '🔍';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 13px;
+            z-index: 1;
+        }
+
+        /* ===== LEADERBOARD ===== */
         .leaderboard-section { grid-column: 1 / -1; }
 
         .leaderboard-table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .leaderboard-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 1;
         }
 
         .leaderboard-table th {
             text-align: left;
-            padding: 8px 12px;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary);
+            padding: 10px 12px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
             text-transform: uppercase;
-            border-bottom: 1px solid var(--border-color);
+            letter-spacing: 0.8px;
+            border-bottom: 2px solid var(--border-color);
+            background: var(--bg-card);
         }
 
         .leaderboard-table td {
-            padding: 8px 12px;
+            padding: 10px 12px;
             font-size: 13px;
-            border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+            border-bottom: 1px solid rgba(55, 65, 81, 0.3);
+            transition: background var(--transition-fast);
         }
 
-        .leaderboard-table tr:hover { background: var(--bg-card-hover); }
+        .leaderboard-table tbody tr {
+            transition: all var(--transition-fast);
+        }
+
+        .leaderboard-table tbody tr:hover {
+            background: var(--bg-card-hover);
+        }
 
         .rank-badge {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 28px;
-            height: 28px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 800;
         }
 
-        .rank-1 { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #000; }
-        .rank-2 { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); color: #000; }
+        .rank-1 { background: var(--gradient-gold); color: #000; box-shadow: 0 2px 8px rgba(255,215,0,0.3); }
+        .rank-2 { background: linear-gradient(135deg, #e0e0e0, #b0b0b0); color: #000; }
         .rank-3 { background: linear-gradient(135deg, #cd7f32, #b8690e); color: #fff; }
-        .rank-other { background: var(--bg-secondary); color: var(--text-secondary); }
+        .rank-other { background: var(--bg-primary); color: var(--text-muted); }
 
-        .pnl-positive { color: var(--accent-green); font-weight: 600; }
-        .pnl-negative { color: var(--accent-red); font-weight: 600; }
+        .pnl-positive { color: var(--accent-green); font-weight: 700; }
+        .pnl-negative { color: var(--accent-red); font-weight: 700; }
 
         .strategy-tag {
             display: inline-block;
-            padding: 2px 8px;
+            padding: 3px 8px;
             border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
         }
 
-        .tag-technical { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
-        .tag-momentum { background: rgba(245, 158, 11, 0.2); color: var(--accent-yellow); }
-        .tag-statistical { background: rgba(139, 92, 246, 0.2); color: var(--accent-purple); }
-        .tag-orderflow { background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); }
-        .tag-hybrid { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
-        .tag-regime { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
-        .tag-ensemble { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
-        .tag-contrarian { background: rgba(251, 146, 60, 0.2); color: #fb923c; }
-        .tag-counter_indicator { background: rgba(244, 63, 94, 0.25); color: #f43f5e; }
-        .tag-sentiment_follow { background: rgba(34, 211, 238, 0.2); color: #22d3ee; }
-        .tag-sentiment_fade { background: rgba(192, 132, 252, 0.2); color: #c084fc; }
-        .tag-proven_bot { background: rgba(250, 204, 21, 0.25); color: #facc15; }
-        .tag-loser_league { background: rgba(239, 68, 68, 0.3); color: #f87171; }
-        .tag-inverse_loser { background: rgba(52, 211, 153, 0.25); color: #34d399; }
-        .tag-ai_teacher { background: rgba(99, 102, 241, 0.25); color: #818cf8; }
+        .tag-technical { background: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
+        .tag-momentum { background: rgba(245, 158, 11, 0.15); color: var(--accent-yellow); }
+        .tag-statistical { background: rgba(139, 92, 246, 0.15); color: var(--accent-purple); }
+        .tag-orderflow { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); }
+        .tag-hybrid { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+        .tag-regime { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+        .tag-ensemble { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+        .tag-contrarian { background: rgba(251, 146, 60, 0.15); color: #fb923c; }
+        .tag-counter_indicator { background: rgba(244, 63, 94, 0.2); color: #f43f5e; }
+        .tag-sentiment_follow { background: rgba(34, 211, 238, 0.15); color: #22d3ee; }
+        .tag-sentiment_fade { background: rgba(192, 132, 252, 0.15); color: #c084fc; }
+        .tag-proven_bot { background: rgba(250, 204, 21, 0.2); color: #facc15; }
+        .tag-loser_league { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .tag-inverse_loser { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+        .tag-ai_teacher { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
 
-        /* Group Cards */
+        /* ===== GROUP CARDS ===== */
         .groups-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -260,26 +651,50 @@
         .group-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 14px;
-            transition: all 0.2s;
+            border-radius: var(--radius-md);
+            padding: 16px;
+            transition: all var(--transition-normal);
             cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .group-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-brand);
+            opacity: 0;
+            transition: opacity var(--transition-fast);
         }
 
         .group-card:hover {
-            border-color: var(--accent-blue);
-            transform: translateY(-2px);
+            border-color: var(--border-glow);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .group-card:hover::before {
+            opacity: 1;
         }
 
         .group-card h3 {
             font-size: 14px;
+            font-weight: 700;
             margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         .group-card .desc {
             font-size: 11px;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
         }
 
         .group-stats {
@@ -290,52 +705,62 @@
 
         .group-stat {
             text-align: center;
-            padding: 4px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 4px;
+            padding: 6px;
+            background: rgba(0,0,0,0.15);
+            border-radius: var(--radius-sm);
+        }
+
+        [data-theme="light"] .group-stat {
+            background: rgba(0,0,0,0.04);
         }
 
         .group-stat .value {
             font-size: 16px;
-            font-weight: 700;
+            font-weight: 800;
         }
 
         .group-stat .label {
             font-size: 10px;
-            color: var(--text-secondary);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
-        /* Evolution Section */
+        /* ===== EVOLUTION LOG ===== */
         .evolution-section { grid-column: 1 / -1; }
 
         .evolution-log {
-            max-height: 200px;
+            max-height: 220px;
             overflow-y: auto;
-            font-family: 'Courier New', monospace;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
             font-size: 12px;
-            line-height: 1.6;
-            padding: 8px;
+            line-height: 1.7;
+            padding: 12px;
             background: var(--bg-primary);
-            border-radius: 6px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
         }
 
-        .evo-entry { padding: 2px 0; }
+        .evo-entry { padding: 3px 0; border-bottom: 1px solid rgba(55,65,81,0.2); }
+        .evo-entry:last-child { border-bottom: none; }
         .evo-fire { color: var(--accent-red); }
         .evo-hire { color: var(--accent-green); }
         .evo-elite { color: var(--accent-yellow); }
 
-        /* Settings Panel */
+        /* ===== SETTINGS PANEL ===== */
         .settings-panel {
             display: none;
             position: fixed;
-            top: 60px;
-            right: 16px;
+            top: 68px;
+            right: 20px;
             background: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: var(--radius-lg);
+            padding: 24px;
             z-index: 200;
-            width: 300px;
+            width: 320px;
+            box-shadow: var(--shadow-lg);
+            animation: slideDown 0.2s ease;
         }
 
         .settings-panel.active { display: block; }
@@ -344,146 +769,651 @@
 
         .setting-group label {
             display: block;
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-bottom: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .setting-group input, .setting-group select {
+        .setting-group input,
+        .setting-group select {
             width: 100%;
-            padding: 6px 10px;
-            background: var(--bg-secondary);
+            padding: 8px 12px;
+            background: var(--bg-primary);
             border: 1px solid var(--border-color);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             color: var(--text-primary);
             font-size: 13px;
+            font-family: inherit;
+            transition: border-color var(--transition-fast);
         }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg-primary); }
-        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+        .setting-group input:focus,
+        .setting-group select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
 
-        /* Responsive */
-        @media (max-width: 768px) {
+        /* ===== MODAL (Round 16) ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: var(--bg-modal-overlay);
+            backdrop-filter: blur(8px);
+            z-index: 300;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 28px;
+            box-shadow: var(--shadow-lg);
+            animation: scaleIn 0.25s ease;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+        }
+
+        .modal-close:hover {
+            background: var(--accent-red-dim);
+            color: var(--accent-red);
+        }
+
+        .modal-agents-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .modal-agents-table th {
+            text-align: left;
+            padding: 8px 10px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-agents-table td {
+            padding: 8px 10px;
+            font-size: 12px;
+            border-bottom: 1px solid rgba(55,65,81,0.2);
+        }
+
+        /* ===== TOAST NOTIFICATIONS (Round 19) ===== */
+        .toast-container {
+            position: fixed;
+            top: 72px;
+            right: 20px;
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 12px 18px;
+            font-size: 13px;
+            box-shadow: var(--shadow-lg);
+            animation: slideInRight 0.3s ease, fadeOut 0.3s ease 3.7s forwards;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 360px;
+        }
+
+        .toast-success { border-left: 3px solid var(--accent-green); }
+        .toast-error { border-left: 3px solid var(--accent-red); }
+        .toast-info { border-left: 3px solid var(--accent-blue); }
+
+        /* ===== SKELETON LOADING (Round 12) ===== */
+        .skeleton {
+            background: linear-gradient(90deg,
+                var(--bg-secondary) 25%,
+                var(--bg-card-hover) 50%,
+                var(--bg-secondary) 75%);
+            background-size: 200% 100%;
+            animation: skeletonPulse 1.5s ease-in-out infinite;
+            border-radius: var(--radius-sm);
+        }
+
+        .skeleton-text {
+            height: 14px;
+            margin-bottom: 8px;
+            width: 80%;
+        }
+
+        .skeleton-text-short { width: 40%; }
+
+        /* ===== FOOTER (Round 13) ===== */
+        .site-footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 32px 24px;
+            margin-top: 40px;
+        }
+
+        .footer-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 32px;
+        }
+
+        .footer-brand h3 {
+            font-size: 16px;
+            font-weight: 800;
+            background: var(--gradient-brand);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .footer-brand p {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .footer-section h4 {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section li {
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding: 3px 0;
+            cursor: default;
+        }
+
+        .footer-bottom {
+            max-width: 1600px;
+            margin: 20px auto 0;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* ===== ANIMATIONS (Round 9) ===== */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+        }
+
+        @keyframes skeletonPulse {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        @keyframes pulse-status {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* ===== ANIMATION DELAYS ===== */
+        .delay-1 { animation-delay: 0.05s; }
+        .delay-2 { animation-delay: 0.1s; }
+        .delay-3 { animation-delay: 0.15s; }
+        .delay-4 { animation-delay: 0.2s; }
+        .delay-5 { animation-delay: 0.25s; }
+
+        /* ===== RESPONSIVE (Round 11) ===== */
+        @media (max-width: 1024px) {
             .main-grid { grid-template-columns: 1fr; }
-            .price-tickers { flex-wrap: wrap; }
+            .footer-content { grid-template-columns: 1fr 1fr; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .header { padding: 0 16px; }
+            .header-nav { display: none; }
+            .header h1 small { display: none; }
+            .main-content { padding: 12px; }
+            .main-grid { gap: 12px; }
+            .price-tickers { gap: 8px; }
+            .price-ticker { min-width: 120px; padding: 10px 14px; }
+            .groups-grid { grid-template-columns: 1fr; }
+            .footer-content { grid-template-columns: 1fr; gap: 20px; }
+            .footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
+            .card { padding: 14px; }
+            .modal { width: 95%; padding: 20px; }
+            .leaderboard-table { font-size: 11px; }
+            .leaderboard-table th, .leaderboard-table td { padding: 6px 8px; }
+            .stats-row { grid-template-columns: 1fr 1fr; }
+            .stat-card .stat-value { font-size: 22px; }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 { font-size: 15px; }
+            .header-controls { gap: 4px; }
+            .btn { padding: 6px 10px; font-size: 11px; }
+            .stats-row { grid-template-columns: 1fr; }
+        }
+
+        /* Round 20: Print styles for SEO (content accessibility) */
+        @media print {
+            .header, .settings-panel, .modal-overlay, .toast-container, .btn { display: none !important; }
+            body { background: white; color: black; }
+            .card { border: 1px solid #ccc; break-inside: avoid; }
+        }
+
+        /* Round 20: Reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>BOTBOT Trading Arena</h1>
-        <div class="header-controls">
-            <span id="statusBadge" class="status-badge status-idle">IDLE</span>
-            <span id="genBadge" style="font-size:12px;color:var(--text-secondary)">Gen: 0</span>
-            <button class="btn btn-primary" id="startBtn" onclick="startSimulation()">Start</button>
-            <button class="btn btn-danger" id="stopBtn" onclick="stopSimulation()" style="display:none">Stop</button>
-            <button class="btn" style="background:var(--border-color);color:var(--text-primary)" onclick="toggleSettings()">Settings</button>
+    <!-- Round 4: Skip Navigation -->
+    <a href="#main-content" class="skip-nav" aria-label="메인 콘텐츠로 건너뛰기">Skip to content</a>
+
+    <!-- Round 3: Semantic header -->
+    <header class="header" role="banner">
+        <div class="header-brand">
+            <div class="header-logo" aria-hidden="true">B</div>
+            <h1>
+                BOTBOT
+                <small>AI Trading Agent Arena</small>
+            </h1>
         </div>
-    </div>
+
+        <!-- Round 7: Navigation tabs -->
+        <nav class="header-nav" role="navigation" aria-label="메인 내비게이션">
+            <button class="nav-tab active" data-section="dashboard" aria-current="page">Dashboard</button>
+            <button class="nav-tab" data-section="groups">Groups</button>
+            <button class="nav-tab" data-section="evolution">Evolution</button>
+        </nav>
+
+        <div class="header-controls">
+            <span id="statusBadge" class="status-badge status-idle" role="status" aria-live="polite">IDLE</span>
+            <span id="genBadge" style="font-size:12px;color:var(--text-muted);font-weight:600" aria-label="세대">Gen: 0</span>
+            <button class="btn btn-primary" id="startBtn" onclick="startSimulation()" aria-label="시뮬레이션 시작">
+                <span>&#9654;</span> Start
+            </button>
+            <button class="btn btn-danger" id="stopBtn" onclick="stopSimulation()" style="display:none" aria-label="시뮬레이션 중지">
+                <span>&#9632;</span> Stop
+            </button>
+            <!-- Round 18: Export button -->
+            <button class="btn btn-ghost" onclick="exportCSV()" title="리더보드 CSV 내보내기" aria-label="CSV 내보내기">
+                &#8681; CSV
+            </button>
+            <!-- Round 15: Theme toggle -->
+            <button class="btn-icon" onclick="toggleTheme()" title="테마 전환" aria-label="다크/라이트 테마 전환" id="themeBtn">
+                &#9790;
+            </button>
+            <button class="btn-icon" onclick="toggleSettings()" title="설정" aria-label="설정 패널 열기">
+                &#9881;
+            </button>
+        </div>
+    </header>
 
     <!-- Settings Panel -->
-    <div class="settings-panel" id="settingsPanel">
-        <h3 style="margin-bottom:12px;font-size:16px">Simulation Settings</h3>
+    <aside class="settings-panel" id="settingsPanel" role="dialog" aria-label="시뮬레이션 설정">
+        <h3 style="margin-bottom:16px;font-size:16px;font-weight:800">Simulation Settings</h3>
         <div class="setting-group">
-            <label>Number of Candles</label>
+            <label for="nCandles">Number of Candles</label>
             <input type="number" id="nCandles" value="1000" min="100" max="10000">
         </div>
         <div class="setting-group">
-            <label>Simulation Speed</label>
+            <label for="speed">Simulation Speed</label>
             <input type="range" id="speed" min="1" max="100" value="20">
-            <span id="speedValue" style="font-size:12px;color:var(--text-secondary)">20x</span>
+            <span id="speedValue" style="font-size:12px;color:var(--text-muted);font-weight:600">20x</span>
         </div>
         <div class="setting-group">
-            <label>Symbols (comma-separated)</label>
+            <label for="symbols">Symbols (comma-separated)</label>
             <input type="text" id="symbols" value="BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT">
         </div>
-        <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="toggleSettings()">Close</button>
-    </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="toggleSettings()">Close Settings</button>
+    </aside>
 
-    <div class="main-grid">
-        <!-- Progress -->
-        <div class="card progress-section">
-            <div class="card-title"><span class="icon">&#9881;</span> Simulation Progress</div>
-            <div class="progress-bar-container">
-                <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+    <!-- Round 19: Toast Container -->
+    <div class="toast-container" id="toastContainer" aria-live="assertive" aria-atomic="true"></div>
+
+    <!-- Round 16: Modal -->
+    <div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">Group Detail</h2>
+                <button class="modal-close" onclick="closeModal()" aria-label="닫기">&times;</button>
             </div>
-            <div class="progress-stats">
-                <span id="progressText">0 / 0 candles</span>
-                <span id="progressPct">0%</span>
-            </div>
-        </div>
-
-        <!-- Price Tickers -->
-        <div class="card price-section">
-            <div class="card-title"><span class="icon">&#9733;</span> Market Prices</div>
-            <div class="price-tickers" id="priceTickers">
-                <div class="price-ticker">
-                    <div class="symbol">BTCUSDT</div>
-                    <div class="price">--</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Global Leaderboard -->
-        <div class="card leaderboard-section">
-            <div class="card-title"><span class="icon">&#9813;</span> Global Leaderboard - Top 20</div>
-            <table class="leaderboard-table">
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>Agent</th>
-                        <th>Group</th>
-                        <th>Strategy</th>
-                        <th>PnL ($)</th>
-                        <th>PnL %</th>
-                        <th>Win Rate</th>
-                        <th>Trades</th>
-                        <th>Max DD</th>
-                    </tr>
-                </thead>
-                <tbody id="leaderboardBody">
-                    <tr><td colspan="9" style="text-align:center;color:var(--text-secondary);padding:40px">
-                        Start a simulation to see results
-                    </td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Agent Groups -->
-        <div class="card" style="grid-column: 1 / -1">
-            <div class="card-title"><span class="icon">&#9775;</span> Agent Groups</div>
-            <div class="groups-grid" id="groupsGrid">
-                <div style="text-align:center;color:var(--text-secondary);padding:40px;grid-column:1/-1">
-                    Waiting for simulation...
-                </div>
-            </div>
-        </div>
-
-        <!-- Evolution Log -->
-        <div class="card evolution-section">
-            <div class="card-title"><span class="icon">&#9850;</span> Evolution Log (Hire & Fire)</div>
-            <div class="evolution-log" id="evolutionLog">
-                <div style="color:var(--text-secondary)">Evolution events will appear here...</div>
+            <div id="modalContent">
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text skeleton-text-short"></div>
             </div>
         </div>
     </div>
+
+    <!-- Round 3: Semantic main -->
+    <main id="main-content" class="main-content" role="main">
+        <div class="main-grid">
+
+            <!-- Stats Row (Round 14) -->
+            <div class="stats-row" id="statsRow" aria-label="요약 통계">
+                <div class="stat-card delay-1" style="animation: fadeInUp 0.5s ease backwards">
+                    <div class="stat-value" style="color:var(--accent-blue)" id="statAgents">70+</div>
+                    <div class="stat-label">AI Agents</div>
+                </div>
+                <div class="stat-card delay-2" style="animation: fadeInUp 0.5s ease backwards">
+                    <div class="stat-value" style="color:var(--accent-purple)" id="statGroups">19</div>
+                    <div class="stat-label">Agent Groups</div>
+                </div>
+                <div class="stat-card delay-3" style="animation: fadeInUp 0.5s ease backwards">
+                    <div class="stat-value pnl-positive" id="statBestPnl">--</div>
+                    <div class="stat-label">Best PnL</div>
+                </div>
+                <div class="stat-card delay-4" style="animation: fadeInUp 0.5s ease backwards">
+                    <div class="stat-value" style="color:var(--accent-yellow)" id="statTrades">0</div>
+                    <div class="stat-label">Total Trades</div>
+                </div>
+                <div class="stat-card delay-5" style="animation: fadeInUp 0.5s ease backwards">
+                    <div class="stat-value" style="color:var(--accent-cyan)" id="statWinRate">--%</div>
+                    <div class="stat-label">Avg Win Rate</div>
+                </div>
+            </div>
+
+            <!-- Progress -->
+            <section class="card progress-section" aria-label="시뮬레이션 진행 상황">
+                <div class="card-title"><span class="icon" aria-hidden="true">&#9881;</span> Simulation Progress</div>
+                <div class="progress-bar-container" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="progressBarWrapper">
+                    <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+                </div>
+                <div class="progress-stats">
+                    <span id="progressText">0 / 0 candles</span>
+                    <span id="progressPct">0%</span>
+                </div>
+            </section>
+
+            <!-- Price Tickers -->
+            <section class="card price-section" aria-label="시장 가격">
+                <div class="card-title"><span class="icon" aria-hidden="true">&#9733;</span> Market Prices</div>
+                <div class="price-tickers" id="priceTickers" role="list">
+                    <div class="price-ticker" role="listitem">
+                        <div class="symbol">BTCUSDT</div>
+                        <div class="price">--</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Leaderboard -->
+            <section class="card leaderboard-section" aria-label="글로벌 리더보드">
+                <div class="card-title"><span class="icon" aria-hidden="true">&#9813;</span> Global Leaderboard - Top 20</div>
+
+                <!-- Round 17: Search Bar -->
+                <div class="search-bar-container">
+                    <div class="search-wrapper">
+                        <input type="search" class="search-input" id="agentSearch"
+                            placeholder="Search agents, groups, strategies..."
+                            aria-label="에이전트 검색"
+                            oninput="filterLeaderboard(this.value)">
+                    </div>
+                </div>
+
+                <div style="overflow-x:auto">
+                    <table class="leaderboard-table" aria-label="에이전트 순위 테이블">
+                        <thead>
+                            <tr>
+                                <th scope="col">Rank</th>
+                                <th scope="col">Agent</th>
+                                <th scope="col">Group</th>
+                                <th scope="col">Strategy</th>
+                                <th scope="col">PnL ($)</th>
+                                <th scope="col">PnL %</th>
+                                <th scope="col">Win Rate</th>
+                                <th scope="col">Trades</th>
+                                <th scope="col">Max DD</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardBody">
+                            <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:48px;font-size:14px">
+                                <div style="font-size:32px;margin-bottom:8px" aria-hidden="true">&#9654;</div>
+                                Start a simulation to see results
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Agent Groups -->
+            <section class="card" style="grid-column: 1 / -1" aria-label="에이전트 그룹">
+                <div class="card-title"><span class="icon" aria-hidden="true">&#9775;</span> Agent Groups (19)</div>
+                <div class="groups-grid" id="groupsGrid" role="list">
+                    <div style="text-align:center;color:var(--text-muted);padding:48px;grid-column:1/-1;font-size:14px" role="listitem">
+                        <div style="font-size:32px;margin-bottom:8px" aria-hidden="true">&#9203;</div>
+                        Waiting for simulation...
+                    </div>
+                </div>
+            </section>
+
+            <!-- Evolution Log -->
+            <section class="card evolution-section" aria-label="진화 로그">
+                <div class="card-title"><span class="icon" aria-hidden="true">&#9850;</span> Evolution Log (Hire & Fire)</div>
+                <div class="evolution-log" id="evolutionLog" role="log" aria-live="polite">
+                    <div style="color:var(--text-muted);text-align:center;padding:16px">
+                        <div style="font-size:20px;margin-bottom:4px" aria-hidden="true">&#128256;</div>
+                        Evolution events will appear here...
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Round 13: Footer -->
+    <footer class="site-footer" role="contentinfo">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <h3>BotBot Trading Arena</h3>
+                <p>Multi-agent cryptocurrency futures trading simulation with genetic evolution, reinforcement learning, and AI Teacher oversight. 70+ agents compete in 19 groups to find the most profitable strategies.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Agent Types</h4>
+                <ul>
+                    <li>Technical Analysts</li>
+                    <li>Momentum Riders</li>
+                    <li>Smart Money Trackers</li>
+                    <li>Contrarian & Sentiment</li>
+                    <li>Proven Bot Strategies</li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Features</h4>
+                <ul>
+                    <li>Genetic Evolution</li>
+                    <li>Reinforcement Learning</li>
+                    <li>AI Teacher Oversight</li>
+                    <li>Hire & Fire System</li>
+                    <li>Real-time Dashboard</li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Technology</h4>
+                <ul>
+                    <li>Python 3.11+</li>
+                    <li>FastAPI + WebSocket</li>
+                    <li>Binance Futures Model</li>
+                    <li>Multi-LLM Support</li>
+                    <li>Async Architecture</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2024-2026 BotBot Trading Arena. Simulation purposes only.</span>
+            <span>Built with AI-driven genetic evolution</span>
+        </div>
+    </footer>
 
     <script>
+        /* ============================================================
+         *  BotBot Dashboard - Enhanced JavaScript
+         *  Round 1-20 improvements applied
+         * ============================================================ */
+
         let ws = null;
         let isRunning = false;
+        let leaderboardData = [];       // Round 17: for search filtering
+        let lastPrices = {};            // Price change tracking
 
-        // Speed slider
-        document.getElementById('speed').addEventListener('input', function() {
-            document.getElementById('speedValue').textContent = this.value + 'x';
+        // ===== INITIALIZATION =====
+        document.addEventListener('DOMContentLoaded', () => {
+            // Speed slider
+            document.getElementById('speed').addEventListener('input', function() {
+                document.getElementById('speedValue').textContent = this.value + 'x';
+            });
+
+            // Header scroll effect
+            window.addEventListener('scroll', () => {
+                document.querySelector('.header').classList.toggle('scrolled', window.scrollY > 10);
+            }, { passive: true });
+
+            // Nav tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    tab.setAttribute('aria-current', 'page');
+                });
+            });
+
+            // Close modal on overlay click
+            document.getElementById('modalOverlay').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) closeModal();
+            });
+
+            // ESC key closes modal/settings
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeModal();
+                    document.getElementById('settingsPanel').classList.remove('active');
+                }
+            });
+
+            // Round 15: Load saved theme
+            const savedTheme = localStorage.getItem('botbot-theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+                updateThemeIcon(savedTheme);
+            }
         });
 
+        // ===== THEME TOGGLE (Round 15) =====
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('botbot-theme', next);
+            updateThemeIcon(next);
+            showToast(next === 'light' ? 'Light mode' : 'Dark mode', 'info');
+        }
+
+        function updateThemeIcon(theme) {
+            document.getElementById('themeBtn').innerHTML = theme === 'light' ? '&#9728;' : '&#9790;';
+        }
+
+        // ===== SETTINGS =====
         function toggleSettings() {
             document.getElementById('settingsPanel').classList.toggle('active');
         }
 
+        // ===== SIMULATION CONTROL =====
         async function startSimulation() {
             const nCandles = document.getElementById('nCandles').value;
             const speed = document.getElementById('speed').value;
@@ -495,19 +1425,21 @@
                 });
                 const data = await resp.json();
                 if (data.error) {
-                    alert(data.error);
+                    showToast(data.error, 'error');
                     return;
                 }
 
                 isRunning = true;
                 document.getElementById('startBtn').style.display = 'none';
-                document.getElementById('stopBtn').style.display = 'inline-block';
+                document.getElementById('stopBtn').style.display = 'inline-flex';
                 document.getElementById('statusBadge').className = 'status-badge status-running';
                 document.getElementById('statusBadge').textContent = 'RUNNING';
 
+                showToast('Simulation started', 'success');
                 connectWebSocket();
             } catch(e) {
                 console.error('Failed to start:', e);
+                showToast('Failed to start simulation', 'error');
             }
         }
 
@@ -516,13 +1448,15 @@
                 await fetch('/api/simulation/stop', { method: 'POST' });
             } catch(e) {}
             isRunning = false;
-            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('startBtn').style.display = 'inline-flex';
             document.getElementById('stopBtn').style.display = 'none';
             document.getElementById('statusBadge').className = 'status-badge status-idle';
             document.getElementById('statusBadge').textContent = 'STOPPED';
             if (ws) ws.close();
+            showToast('Simulation stopped', 'info');
         }
 
+        // ===== WEBSOCKET =====
         function connectWebSocket() {
             const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
             ws = new WebSocket(`${protocol}//${location.host}/ws`);
@@ -543,18 +1477,25 @@
             };
         }
 
+        // ===== DASHBOARD UPDATE =====
         function updateDashboard(data) {
             // Progress
-            document.getElementById('progressBar').style.width = data.progress_pct + '%';
+            const pct = data.progress_pct || 0;
+            document.getElementById('progressBar').style.width = pct + '%';
+            document.getElementById('progressBarWrapper').setAttribute('aria-valuenow', pct);
             document.getElementById('progressText').textContent = `${data.candle_index} / ${data.total_candles} candles`;
-            document.getElementById('progressPct').textContent = data.progress_pct + '%';
+            document.getElementById('progressPct').textContent = pct + '%';
             document.getElementById('genBadge').textContent = `Gen: ${data.evolution_generation}`;
 
             // Prices
             updatePrices(data.prices);
 
             // Leaderboard
-            updateLeaderboard(data.global_leaderboard);
+            if (data.global_leaderboard) {
+                leaderboardData = data.global_leaderboard;
+                updateLeaderboard(data.global_leaderboard);
+                updateStatsRow(data.global_leaderboard);
+            }
 
             // Groups
             updateGroups(data.groups);
@@ -562,24 +1503,59 @@
 
         function updatePrices(prices) {
             const container = document.getElementById('priceTickers');
+            if (!prices) return;
             let html = '';
             for (const [symbol, price] of Object.entries(prices)) {
                 const displaySymbol = symbol.replace('USDT', '');
+                const prev = lastPrices[symbol] || price;
+                const change = ((price - prev) / prev * 100);
+                const changeColor = change >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                const changeSign = change >= 0 ? '+' : '';
+
                 html += `
-                    <div class="price-ticker">
+                    <div class="price-ticker" role="listitem">
                         <div class="symbol">${displaySymbol}</div>
                         <div class="price">$${formatNumber(price)}</div>
+                        <div class="change" style="color:${changeColor}">${changeSign}${change.toFixed(2)}%</div>
                     </div>`;
+                lastPrices[symbol] = price;
             }
             container.innerHTML = html;
+        }
+
+        // Round 14: Stats Row
+        function updateStatsRow(agents) {
+            if (!agents || agents.length === 0) return;
+
+            const totalAgents = agents.length;
+            const bestPnl = agents[0]?.total_pnl || 0;
+            const totalTrades = agents.reduce((sum, a) => sum + (a.total_trades || 0), 0);
+            const avgWinRate = agents.reduce((sum, a) => sum + (parseFloat(a.win_rate) || 0), 0) / totalAgents;
+
+            document.getElementById('statAgents').textContent = totalAgents;
+            document.getElementById('statBestPnl').textContent = (bestPnl >= 0 ? '+$' : '-$') + formatNumber(Math.abs(bestPnl));
+            document.getElementById('statBestPnl').className = bestPnl >= 0 ? 'stat-value pnl-positive' : 'stat-value pnl-negative';
+            document.getElementById('statTrades').textContent = totalTrades.toLocaleString();
+            document.getElementById('statWinRate').textContent = avgWinRate.toFixed(1) + '%';
         }
 
         function updateLeaderboard(agents) {
             const tbody = document.getElementById('leaderboardBody');
             if (!agents || agents.length === 0) return;
 
+            const searchQuery = document.getElementById('agentSearch')?.value?.toLowerCase() || '';
+
+            let filtered = agents;
+            if (searchQuery) {
+                filtered = agents.filter(a =>
+                    (a.name || a.agent_id || '').toLowerCase().includes(searchQuery) ||
+                    (a.group || '').toLowerCase().includes(searchQuery) ||
+                    (a.strategy || '').toLowerCase().includes(searchQuery)
+                );
+            }
+
             let html = '';
-            agents.forEach((agent, i) => {
+            filtered.forEach((agent, i) => {
                 const rank = i + 1;
                 const rankClass = rank <= 3 ? `rank-${rank}` : 'rank-other';
                 const pnlClass = agent.total_pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
@@ -587,10 +1563,10 @@
 
                 html += `
                     <tr>
-                        <td><span class="rank-badge ${rankClass}">${rank}</span></td>
-                        <td style="font-weight:600">${agent.name || agent.agent_id}</td>
+                        <td><span class="rank-badge ${rankClass}" aria-label="Rank ${rank}">${rank}</span></td>
+                        <td style="font-weight:700">${agent.name || agent.agent_id}</td>
                         <td><span class="strategy-tag ${tagClass}">${agent.group}</span></td>
-                        <td>${agent.strategy || '-'}</td>
+                        <td><span class="mono" style="font-size:11px">${agent.strategy || '-'}</span></td>
                         <td class="${pnlClass}">${agent.total_pnl >= 0 ? '+' : ''}$${formatNumber(agent.total_pnl)}</td>
                         <td class="${pnlClass}">${agent.pnl_percent >= 0 ? '+' : ''}${agent.pnl_percent}%</td>
                         <td>${agent.win_rate}%</td>
@@ -598,7 +1574,17 @@
                         <td style="color:var(--accent-red)">${agent.max_drawdown}%</td>
                     </tr>`;
             });
+
+            if (filtered.length === 0 && searchQuery) {
+                html = `<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:24px">No agents matching "${searchQuery}"</td></tr>`;
+            }
+
             tbody.innerHTML = html;
+        }
+
+        // Round 17: Search filter
+        function filterLeaderboard(query) {
+            updateLeaderboard(leaderboardData);
         }
 
         function updateGroups(groups) {
@@ -611,7 +1597,9 @@
                 const tagClass = getTagClass(group.category);
 
                 html += `
-                    <div class="group-card" onclick="showGroupDetail(${idx})">
+                    <div class="group-card" role="listitem" onclick="showGroupDetail(${idx})" tabindex="0"
+                         onkeydown="if(event.key==='Enter')showGroupDetail(${idx})"
+                         aria-label="${group.name} - PnL: ${group.total_pnl}">
                         <h3>${group.name} <span class="strategy-tag ${tagClass}">${group.category}</span></h3>
                         <div class="desc">${group.total_agents} agents</div>
                         <div class="group-stats">
@@ -629,16 +1617,18 @@
             container.innerHTML = html;
         }
 
+        // ===== EVOLUTION =====
         function addEvolutionEntry(result) {
             const log = document.getElementById('evolutionLog');
             let html = `<div class="evo-entry">`;
-            html += `<strong>Gen ${result.generation} - ${result.group_name}</strong> `;
-            html += `| Best: ${result.best_fitness} | Avg: ${result.avg_fitness}`;
+            html += `<strong>Gen ${result.generation}</strong> `;
+            html += `<span class="strategy-tag tag-hybrid">${result.group_name}</span> `;
+            html += `| Best: <strong>${result.best_fitness}</strong> | Avg: ${result.avg_fitness}`;
             if (result.fired && result.fired.length > 0) {
-                html += `<br><span class="evo-fire">FIRED: ${result.fired.join(', ')}</span>`;
+                html += `<br><span class="evo-fire">&#10006; FIRED: ${result.fired.join(', ')}</span>`;
             }
             if (result.elites && result.elites.length > 0) {
-                html += `<br><span class="evo-elite">ELITES: ${result.elites.join(', ')}</span>`;
+                html += `<br><span class="evo-elite">&#9733; ELITES: ${result.elites.join(', ')}</span>`;
             }
             html += `</div>`;
             log.innerHTML = html + log.innerHTML;
@@ -646,31 +1636,119 @@
 
         function onSimulationComplete(data) {
             isRunning = false;
-            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('startBtn').style.display = 'inline-flex';
             document.getElementById('stopBtn').style.display = 'none';
             document.getElementById('statusBadge').className = 'status-badge status-complete';
             document.getElementById('statusBadge').textContent = 'COMPLETE';
 
-            // Update with final results
             if (data.global_leaderboard) {
+                leaderboardData = data.global_leaderboard;
                 updateLeaderboard(data.global_leaderboard);
+                updateStatsRow(data.global_leaderboard);
             }
 
-            // Show evolution history
             if (data.evolution_history) {
                 data.evolution_history.forEach(result => addEvolutionEntry(result));
             }
+
+            showToast('Simulation complete!', 'success');
         }
 
+        // ===== GROUP DETAIL MODAL (Round 16) =====
         async function showGroupDetail(idx) {
             try {
                 const resp = await fetch(`/api/groups/${idx}`);
                 const data = await resp.json();
-                console.log('Group detail:', data);
-                // Could open a modal here
-            } catch(e) {}
+
+                document.getElementById('modalTitle').textContent = data.name || 'Group Detail';
+                let content = '';
+
+                if (data.description) {
+                    content += `<p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">${data.description}</p>`;
+                }
+
+                if (data.rankings && data.rankings.length > 0) {
+                    content += `<table class="modal-agents-table">
+                        <thead><tr>
+                            <th>Rank</th><th>Agent</th><th>PnL</th><th>Win Rate</th><th>Trades</th>
+                        </tr></thead><tbody>`;
+
+                    data.rankings.forEach((agent, i) => {
+                        const pnlClass = (agent.total_pnl || 0) >= 0 ? 'pnl-positive' : 'pnl-negative';
+                        content += `<tr>
+                            <td>${i + 1}</td>
+                            <td style="font-weight:600">${agent.name || agent.agent_id}</td>
+                            <td class="${pnlClass}">${(agent.total_pnl || 0) >= 0 ? '+' : ''}$${formatNumber(agent.total_pnl || 0)}</td>
+                            <td>${agent.win_rate || 0}%</td>
+                            <td>${agent.total_trades || 0}</td>
+                        </tr>`;
+                    });
+
+                    content += `</tbody></table>`;
+                } else {
+                    content = '<p style="color:var(--text-muted);text-align:center;padding:24px">No agent data available</p>';
+                }
+
+                document.getElementById('modalContent').innerHTML = content;
+                document.getElementById('modalOverlay').classList.add('active');
+                document.body.style.overflow = 'hidden';
+            } catch(e) {
+                showToast('Failed to load group details', 'error');
+            }
         }
 
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // ===== CSV EXPORT (Round 18) =====
+        function exportCSV() {
+            if (!leaderboardData || leaderboardData.length === 0) {
+                showToast('No data to export. Run a simulation first.', 'error');
+                return;
+            }
+
+            const headers = ['Rank', 'Agent', 'Group', 'Strategy', 'PnL ($)', 'PnL %', 'Win Rate %', 'Trades', 'Max Drawdown %'];
+            const rows = leaderboardData.map((a, i) => [
+                i + 1,
+                a.name || a.agent_id,
+                a.group,
+                a.strategy || '-',
+                a.total_pnl,
+                a.pnl_percent,
+                a.win_rate,
+                a.total_trades,
+                a.max_drawdown
+            ]);
+
+            let csv = headers.join(',') + '\n';
+            rows.forEach(row => {
+                csv += row.map(v => `"${v}"`).join(',') + '\n';
+            });
+
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `botbot_leaderboard_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('CSV exported successfully', 'success');
+        }
+
+        // ===== TOAST NOTIFICATIONS (Round 19) =====
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const icons = { success: '&#10004;', error: '&#10006;', info: '&#8505;' };
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `<span>${icons[type] || ''}</span> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        // ===== UTILITIES =====
         function getTagClass(category) {
             const map = {
                 'technical': 'tag-technical',
@@ -689,6 +1767,11 @@
                 'contrarian': 'tag-contrarian',
                 'counter_indicator': 'tag-counter_indicator',
                 'type_counter': 'tag-counter_indicator',
+                'sentiment_follow': 'tag-sentiment_follow',
+                'sentiment_fade': 'tag-sentiment_fade',
+                'proven_bot': 'tag-proven_bot',
+                'loser_league': 'tag-loser_league',
+                'inverse_loser': 'tag-inverse_loser',
             };
             return map[category] || 'tag-technical';
         }
@@ -705,7 +1788,11 @@
             try {
                 const resp = await fetch('/api/leaderboard');
                 const data = await resp.json();
-                if (data.leaderboard) updateLeaderboard(data.leaderboard);
+                if (data.leaderboard) {
+                    leaderboardData = data.leaderboard;
+                    updateLeaderboard(data.leaderboard);
+                    updateStatsRow(data.leaderboard);
+                }
             } catch(e) {}
         }, 3000);
     </script>
