@@ -1,0 +1,25 @@
+# Baby Video Auto-Editor — Python dependencies
+# Install: pip install -r requirements.txt
+
+# Phase 1: Analysis
+opencv-python-headless>=4.8
+opencv-contrib-python>=4.8
+mediapipe>=0.10
+openai-whisper>=20231117
+tensorflow>=2.15
+tensorflow-hub>=0.16
+librosa>=0.10
+numpy>=1.24
+scipy>=1.11
+pyyaml>=6.0
+
+# Phase 2: LLM Brain
+httpx>=0.25
+anthropic>=0.40
+
+# Phase 3: Rendering
+# ffmpeg must be installed at system level (apt install ffmpeg)
+
+# Phase 4: Interface
+watchdog>=4.0
+mcp>=1.0

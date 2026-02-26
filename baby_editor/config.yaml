@@ -1,4 +1,4 @@
-# Baby Video Auto-Editor — Phase 1 Configuration
+# Baby Video Auto-Editor — Full Configuration
 # All thresholds are tunable here without code changes.
 
 segment_duration: 2.0
@@ -94,4 +94,69 @@ audio:
 
 logging:
   level: "INFO"
-  file: "analyze.log"
+  file: "baby_editor.log"
+
+# Phase 2: LLM Brain
+brain:
+  llm:
+    default_provider: "ollama"   # "ollama" | "claude"
+    ollama:
+      base_url: "http://localhost:11434"
+      model: "qwen2.5:32b"
+      temperature: 0.3
+      max_tokens: 4096
+      timeout: 120
+    claude:
+      model: "claude-sonnet-4-5-20250929"
+      temperature: 0.3
+      max_tokens: 4096
+    retry:
+      max_attempts: 3
+      backoff_seconds: 2
+    fallback_enabled: true
+
+  editing:
+    default_target_ratio: 0.17   # 17% of original
+    min_target_sec: 15
+    max_target_sec: 300
+    selection_baseline: 3
+    handle_frames_sec: 0.5
+    min_clip_duration: 1.5
+    max_clip_duration: 15.0
+    twin_balance_threshold: 0.35
+
+# Phase 3: Rendering
+render:
+  video:
+    codec: "h264_nvenc"
+    preset: "p4"
+    cq: 23
+  audio:
+    codec: "aac"
+    bitrate: "192k"
+    fade_duration: 0.3
+    normalize_target_lufs: -18
+  transitions:
+    dissolve_duration: 0.5
+    fade_black_duration: 0.8
+    day_change_fade: 1.2
+  vertical:
+    width: 1080
+    height: 1920
+
+# Phase 4: Interface
+interface:
+  video_base_path: "/videos"
+  output_base_path: "/output"
+  watcher:
+    enabled: true
+    debounce_seconds: 30
+  cron:
+    enabled: true
+    schedule: "0 2 * * *"
+  telegram:
+    enabled: false
+    bot_token: ""
+    chat_id: ""
+  mcp:
+    enabled: true
