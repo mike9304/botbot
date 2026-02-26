@@ -1,0 +1,97 @@
+# Baby Video Auto-Editor — Phase 1 Configuration
+# All thresholds are tunable here without code changes.
+
+segment_duration: 2.0
+frame_sample_rate: 3          # frames per 2s segment for video analysis
+face_sample_stride: 6         # every 6th frame for face detection (~5fps)
+delete_threshold: -7          # total score below this → action: "delete"
+selection_baseline: 3         # total score above this → action: "select"
+
+delete_rules:
+  shake:
+    severe_threshold: 12      # px/frame mean optical flow
+    mild_threshold: 5
+    sustained_pct: 0.8        # 80% of sampled pairs must exceed threshold
+    optical_flow:
+      pyr_scale: 0.5
+      levels: 3
+      winsize: 15
+      iterations: 3
+      poly_n: 5
+      poly_sigma: 1.2
+      frame_step: 3           # sample every 3rd frame
+  silence:
+    threshold_db: -45
+    near_silence_pct: 0.6     # 60% of segment windows below threshold
+    consecutive_seconds: 5    # cross-segment silence detection
+    rms_window_ms: 100        # RMS analysis window size
+  exposure:
+    overexpose_pct: 0.60      # top 5% luminance region > 60% pixels
+    underexpose_pct: 0.70     # bottom 5% luminance region > 70% pixels
+    warn_overexpose_pct: 0.40
+    warn_underexpose_pct: 0.50
+    top_bin_start: 243        # luminance bins 243-255 = top 5%
+    bot_bin_end: 12           # luminance bins 0-12 = bottom 5%
+  focus:
+    blur_threshold: 50        # Laplacian variance < 50 → out of focus
+    soft_threshold: 100       # variance 50-100 → soft focus
+    hunting_std: 30           # std > 30 across samples → focus hunting
+    center_crop_ratio: 0.6    # analyze center 60% (ignore bokeh edges)
+  obstruction:
+    std_threshold_hard: 5     # frame std < 5 → lens blocked
+    std_threshold_soft: 10    # frame std < 10 → lens obstructed
+    dark_brightness: 30       # mean brightness < 30 → dark obstruction
+    bright_brightness: 220    # mean brightness > 220 → bright obstruction
+
+addition_rules:
+  face:
+    min_confidence: 0.7
+    frontal_confidence: 0.85
+    closeup_pct: 0.10         # face bbox > 10% of frame area
+    model_selection: 1        # 0=short range, 1=full range
+  laugh:
+    min_confidence: 0.7
+    long_duration: 3.0        # seconds for "sustained laughter"
+    yamnet_window: 0.96       # YAMNet input window size
+    yamnet_hop: 0.48
+    laughter_classes:         # YAMNet class names to match
+      - "Laughter"
+      - "Baby laughter"
+      - "Giggle"
+    crying_classes:
+      - "Crying, sobbing"
+      - "Baby cry, infant cry"
+  voice:
+    whisper_model: "tiny"     # tiny | base | small
+    whisper_language: "ko"    # Korean
+    exclamation_keywords:     # Korean exclamations
+      - "와"
+      - "오"
+      - "잘한다"
+      - "잘했어"
+      - "이쁘다"
+      - "예쁘다"
+      - "멋지다"
+      - "대박"
+      - "우와"
+      - "하하"
+    baby_names: []            # fill in with actual baby names
+    babble_confidence_threshold: 0.3  # Whisper confidence below this → babble
+  movement:
+    min_change_pct: 5         # > 5% pixels changed → movement
+    active_change_pct: 15     # > 15% pixels changed → active movement
+    pixel_diff_threshold: 25  # absolute pixel difference threshold
+    uniform_flow_threshold: 0.7  # flow uniformity > 0.7 → camera pan, not subject
+  gaze:
+    enabled: false            # Sprint 2 — disabled for Sprint 1
+    max_gaze_angle: 15        # degrees from camera axis
+    proxy_confidence: 0.9     # if face conf > 0.9 + frontal → proxy for eye contact
+
+audio:
+  sample_rate: 16000
+  mono: true
+  format: "wav"
+
+logging:
+  level: "INFO"
+  file: "analyze.log"
