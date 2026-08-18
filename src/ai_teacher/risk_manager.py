@@ -297,7 +297,12 @@ class RiskManager:
                 "message": "Not enough data to evaluate",
                 "pnl_pct": 0,
                 "win_rate": 0,
+                "max_drawdown": 0.0,
                 "trades": 0,
+                "avg_pnl_per_trade": 0.0,
+                "strengths": [],
+                "weaknesses": [],
+                "fitness": round(agent.fitness, 2) if account else 0.0,
             }
 
         pnl_pct = account.pnl_percent
