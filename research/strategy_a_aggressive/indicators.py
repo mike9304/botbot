@@ -135,11 +135,12 @@ def align_daily_ema_regime(
     regime_daily[valid & (ema_fast > ema_slow)] = 1
     regime_daily[valid & (ema_fast < ema_slow)] = -1
 
-    # Day start of each bar (UTC midnight).
+    # Bitget 1D timestamps are bar *open* (often 16:00 UTC). A daily bar is
+    # complete only after open + 1D, so an intraday bar never sees the same
+    # day's close (no lookahead).
     day_ms = 86_400_000
-    bar_day_start = (bar_ts_ms // day_ms) * day_ms
-    # Last daily bar with ts < bar_day_start
-    idx = np.searchsorted(daily_ts_ms, bar_day_start, side="left") - 1
+    complete_at = daily_ts_ms + day_ms
+    idx = np.searchsorted(complete_at, bar_ts_ms, side="right") - 1
     out = np.zeros(len(bar_ts_ms), dtype=np.int8)
     good = idx >= 0
     out[good] = regime_daily[idx[good]]
